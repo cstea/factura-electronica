@@ -1,5 +1,10 @@
 # stea/factura-electronica
 
+[![CI](https://github.com/cstea/factura-electronica/actions/workflows/ci.yml/badge.svg)](https://github.com/cstea/factura-electronica/actions/workflows/ci.yml)
+[![Latest version](https://img.shields.io/packagist/v/stea/factura-electronica.svg)](https://packagist.org/packages/stea/factura-electronica)
+[![PHP](https://img.shields.io/packagist/dependency-v/stea/factura-electronica/php.svg)](composer.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A native PHP 8.5 / Laravel package for **Costa Rica factura electrónica v4.4**. It builds
 comprobante XML, signs it with **XAdES-EPES** using a Hacienda-issued PKCS#12 certificate, and
 submits it to the Ministerio de Hacienda reception API — with no dependency on external SOAP
