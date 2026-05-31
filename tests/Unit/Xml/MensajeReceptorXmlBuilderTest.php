@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Xml;
 
 use DateTimeImmutable;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
-use Stea\FacturaElectronica\Dtos\MensajeReceptorDto;
 use Stea\FacturaElectronica\Credentials\SigningCertificate;
+use Stea\FacturaElectronica\Dtos\MensajeReceptorDto;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
 use Stea\FacturaElectronica\Xml\MensajeReceptorXmlBuilder;
 use Stea\FacturaElectronica\Xml\XsdValidator;
@@ -48,14 +50,14 @@ final class MensajeReceptorXmlBuilderTest extends TestCase
 
     public function test_signed_mr_passes_xsd(): void
     {
-        $builder = new MensajeReceptorXmlBuilder();
+        $builder = new MensajeReceptorXmlBuilder;
         $doc = $builder->build($this->dto(), self::SYNTH_CLAVE);
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'Signed MR must pass XSD: '.implode('; ', $validator->errors()));
@@ -63,7 +65,7 @@ final class MensajeReceptorXmlBuilderTest extends TestCase
 
     public function test_mr_contains_expected_root_and_clave(): void
     {
-        $builder = new MensajeReceptorXmlBuilder();
+        $builder = new MensajeReceptorXmlBuilder;
         $xml = $builder->build($this->dto(), self::SYNTH_CLAVE)->saveXML();
 
         $this->assertStringContainsString('<MensajeReceptor', $xml);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Xml;
 
@@ -86,7 +88,7 @@ final class NotaDebitoXmlBuilderTest extends TestCase
     public function test_signed_nd_passes_xsd(): void
     {
         $fechaEmision = new DateTimeImmutable('2026-05-29T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001020000000001',
@@ -94,14 +96,14 @@ final class NotaDebitoXmlBuilderTest extends TestCase
             codigoSeguridad: '00000001',
         );
 
-        $builder = new NotaDebitoXmlBuilder();
+        $builder = new NotaDebitoXmlBuilder;
         $doc = $builder->build($this->dto(), $clave);
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'Signed ND must pass XSD: '.implode('; ', $validator->errors()));

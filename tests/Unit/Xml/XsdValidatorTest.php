@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Xml;
 
@@ -32,7 +34,7 @@ final class XsdValidatorTest extends TestCase
     private function syntheticSignedFee(): DOMDocument
     {
         $fechaEmision = new DateTimeImmutable('2026-01-01T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001090000000001',
@@ -83,11 +85,11 @@ final class XsdValidatorTest extends TestCase
             tipoCambio: 500.0,
         );
 
-        $builder = new FacturaExportacionXmlBuilder();
+        $builder = new FacturaExportacionXmlBuilder;
         $cert = SigningCertificate::fromPath(__DIR__.'/../../fixtures/cert/test.p12', '1234');
-        $signed = (new XadesEpesSigner())->sign($builder->build($dto, $clave), $cert);
+        $signed = (new XadesEpesSigner)->sign($builder->build($dto, $clave), $cert);
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
         return $wire;
@@ -95,15 +97,15 @@ final class XsdValidatorTest extends TestCase
 
     public function test_synthetic_signed_fee_validates_against_bundled_xsd(): void
     {
-        $this->assertTrue((new XsdValidator())->validate($this->syntheticSignedFee(), $this->xsd()));
+        $this->assertTrue((new XsdValidator)->validate($this->syntheticSignedFee(), $this->xsd()));
     }
 
     public function test_invalid_document_fails_with_messages(): void
     {
-        $doc = new DOMDocument();
+        $doc = new DOMDocument;
         $doc->loadXML('<FacturaElectronicaExportacion xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronicaExportacion"><Bogus/></FacturaElectronicaExportacion>');
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $this->assertFalse($validator->validate($doc, $this->xsd()));
         $this->assertNotEmpty($validator->errors());
     }

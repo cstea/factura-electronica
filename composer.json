@@ -13,8 +13,10 @@
         "illuminate/http": "^11.0 || ^12.0 || ^13.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
-        "orchestra/testbench": "^9.0 || ^10.0"
+        "laravel/pint": "*",
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "phpstan/phpstan": "*",
+        "phpunit/phpunit": "^11.0"
     },
     "autoload": { "psr-4": { "Stea\\FacturaElectronica\\": "src/" } },
     "autoload-dev": { "psr-4": { "Stea\\FacturaElectronica\\Tests\\": "tests/" } },

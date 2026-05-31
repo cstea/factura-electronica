@@ -41,3 +41,9 @@ jobs:
 
       - name: Run PHPUnit
         run: vendor/bin/phpunit
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit 512M

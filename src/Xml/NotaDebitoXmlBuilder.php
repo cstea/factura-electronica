@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Xml;
 
@@ -41,9 +43,7 @@ final class NotaDebitoXmlBuilder implements DocumentBuilder
         $this->el($doc, $root, 'Clave', $clave);
         $this->el($doc, $root, 'ProveedorSistemas', $dto->proveedorSistemas);
 
-        if ($dto->codigoActividadEmisor !== null) {
-            $this->el($doc, $root, 'CodigoActividadEmisor', $dto->codigoActividadEmisor);
-        }
+        $this->el($doc, $root, 'CodigoActividadEmisor', $dto->codigoActividadEmisor);
         if ($dto->codigoActividadReceptor !== null) {
             $this->el($doc, $root, 'CodigoActividadReceptor', $dto->codigoActividadReceptor);
         }

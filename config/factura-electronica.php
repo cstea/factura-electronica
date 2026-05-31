@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 return [
     'environment' => env('FE_ENV', 'sandbox'),
@@ -8,6 +10,6 @@ return [
     ],
     'certificate' => [
         'path' => env('FE_P12_PATH'),
-        'pin'  => env('FE_PIN'),
+        'pin' => env('FE_PIN'),
     ],
 ];

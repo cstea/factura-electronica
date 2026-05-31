@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Signing;
 
@@ -23,7 +25,7 @@ final class XadesEpesSignerTest extends TestCase
 {
     private function doc(): DOMDocument
     {
-        $doc = new DOMDocument();
+        $doc = new DOMDocument;
         $doc->loadXML('<FacturaElectronicaExportacion xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronicaExportacion"><Clave>50601012600310100000000100001090000000001100000001</Clave></FacturaElectronicaExportacion>');
 
         return $doc;
@@ -36,7 +38,7 @@ final class XadesEpesSignerTest extends TestCase
 
     public function test_signed_document_carries_signature_and_xades_policy(): void
     {
-        $xml = (new XadesEpesSigner())->sign($this->doc(), $this->cert())->saveXML();
+        $xml = (new XadesEpesSigner)->sign($this->doc(), $this->cert())->saveXML();
 
         $this->assertStringContainsString('http://uri.etsi.org/01903/v1.3.2#', $xml);
         $this->assertStringContainsString('DWxin1xWOeI8OuWQXazh4VjLWAaCLAA954em7DMh0h8=', $xml);
@@ -46,9 +48,9 @@ final class XadesEpesSignerTest extends TestCase
 
     public function test_signature_verifies_cryptographically(): void
     {
-        $signed = (new XadesEpesSigner())->sign($this->doc(), $this->cert());
+        $signed = (new XadesEpesSigner)->sign($this->doc(), $this->cert());
 
-        $verify = new XMLSecurityDSig();
+        $verify = new XMLSecurityDSig;
         $sig = $verify->locateSignature($signed);
         $this->assertNotNull($sig);
 
@@ -82,6 +84,9 @@ final class XadesEpesSignerTest extends TestCase
         $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
 
         foreach ($xpath->query('./ds:SignedInfo/ds:Reference', $sig) as $reference) {
+            if (! $reference instanceof \DOMElement) {
+                continue;
+            }
             $uri = $reference->getAttribute('URI');
             $stored = trim((string) $xpath->evaluate('string(./ds:DigestValue)', $reference));
 
@@ -89,7 +94,7 @@ final class XadesEpesSignerTest extends TestCase
                 // Enveloped document reference: digest the document with the
                 // Signature element removed.
                 $clone = clone $signed;
-                $cloneSig = (new XMLSecurityDSig())->locateSignature($clone);
+                $cloneSig = (new XMLSecurityDSig)->locateSignature($clone);
                 $cloneSig->parentNode->removeChild($cloneSig);
                 $canonical = (string) $clone->C14N();
             } else {
@@ -111,11 +116,11 @@ final class XadesEpesSignerTest extends TestCase
 
     public function test_signed_fee_passes_full_xsd(): void
     {
-        $builder = new FacturaExportacionXmlBuilder();
+        $builder = new FacturaExportacionXmlBuilder;
         $clave = '50601012600310100000000100001090000000001100000001';
         $doc = $builder->build($this->dtoFromGolden(), $clave);
 
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
         // Validate the serialized (wire) form. libxml's schemaValidate has a
         // known quirk validating a live, surgically-modified DOM tree whose
@@ -123,10 +128,10 @@ final class XadesEpesSignerTest extends TestCase
         // namespace) and inherit the default namespace; round-tripping through
         // saveXML()/loadXML() resolves the namespace inheritance the same way
         // Hacienda receives it.
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'signed FEE must pass full XSD: '.implode('; ', $validator->errors()));

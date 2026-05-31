@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Xml;
 
@@ -78,7 +80,7 @@ final class FacturaExportacionXmlBuilderTest extends TestCase
     public function test_signed_fee_passes_xsd(): void
     {
         $fechaEmision = new DateTimeImmutable('2026-01-01T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001090000000001',
@@ -86,14 +88,14 @@ final class FacturaExportacionXmlBuilderTest extends TestCase
             codigoSeguridad: '00000001',
         );
 
-        $builder = new FacturaExportacionXmlBuilder();
+        $builder = new FacturaExportacionXmlBuilder;
         $doc = $builder->build($this->dto(), $clave);
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'Signed FEE must pass XSD: '.implode('; ', $validator->errors()));
@@ -102,7 +104,7 @@ final class FacturaExportacionXmlBuilderTest extends TestCase
     public function test_fee_contains_expected_root_and_clave(): void
     {
         $fechaEmision = new DateTimeImmutable('2026-01-01T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001090000000001',
@@ -110,7 +112,7 @@ final class FacturaExportacionXmlBuilderTest extends TestCase
             codigoSeguridad: '00000001',
         );
 
-        $builder = new FacturaExportacionXmlBuilder();
+        $builder = new FacturaExportacionXmlBuilder;
         $xml = $builder->build($this->dto(), $clave)->saveXML();
 
         $this->assertStringContainsString('<FacturaElectronicaExportacion', $xml);

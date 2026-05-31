@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Clave;
 
@@ -15,7 +17,7 @@ final class ClaveGeneratorTest extends TestCase
         // Cedula 3101000000, date 2026-01-01, consecutivo 00100001090000000001,
         // Situacion::Normal (1), security 00000001.
         // Expected: 506 + 010126 + 003101000000 + 00100001090000000001 + 1 + 00000001
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: new DateTimeImmutable('2026-01-01'),
             consecutivo: '00100001090000000001',
@@ -30,6 +32,6 @@ final class ClaveGeneratorTest extends TestCase
     public function test_rejects_consecutivo_not_20_digits(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        (new ClaveGenerator())->generate('3101000000', new DateTimeImmutable(), '123', Situacion::Normal, '00000001');
+        (new ClaveGenerator)->generate('3101000000', new DateTimeImmutable, '123', Situacion::Normal, '00000001');
     }
 }

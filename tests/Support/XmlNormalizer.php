@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Support;
 
@@ -9,7 +11,7 @@ final class XmlNormalizer
     /** Canonicalize the comprobante body: drop the ds:Signature subtree + insignificant whitespace. */
     public static function bodyC14n(string $xml): string
     {
-        $doc = new DOMDocument();
+        $doc = new DOMDocument;
         $doc->preserveWhiteSpace = false;
         $doc->formatOutput = false;
         $doc->loadXML($xml);

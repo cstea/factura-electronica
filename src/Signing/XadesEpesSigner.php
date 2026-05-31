@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Signing;
 
@@ -19,7 +21,9 @@ use Stea\FacturaElectronica\Exceptions\SigningException;
 final class XadesEpesSigner
 {
     private const XMLDSIG_NS = 'http://www.w3.org/2000/09/xmldsig#';
+
     private const SHA256_ALGO = 'http://www.w3.org/2001/04/xmlenc#sha256';
+
     private const ENVELOPED_TRANSFORM = 'http://www.w3.org/2000/09/xmldsig#enveloped-signature';
 
     public function sign(DOMDocument $doc, SigningCertificate $cert): DOMDocument
@@ -282,11 +286,10 @@ final class XadesEpesSigner
      */
     private function resetInternalXPath(XMLSecurityDSig $objDSig): void
     {
-        if (! property_exists($objDSig, 'xPathCtx')) {
-            throw new SigningException('Incompatible robrichards/xmlseclibs version: expected private $xPathCtx on XMLSecurityDSig.');
-        }
-        $property = new \ReflectionProperty(XMLSecurityDSig::class, 'xPathCtx');
-        $property->setValue($objDSig, null);
+        // Accesses the private $xPathCtx property via reflection to clear the cached
+        // DOMXPath context. If a future version of robrichards/xmlseclibs removes this
+        // property, a ReflectionException will surface here with a clear stack trace.
+        (new \ReflectionProperty(XMLSecurityDSig::class, 'xPathCtx'))->setValue($objDSig, null);
     }
 
     private function references(DOMElement $sigNode): \DOMNodeList

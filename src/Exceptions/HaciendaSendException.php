@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Exceptions;
 
@@ -9,6 +11,6 @@ final class HaciendaSendException extends FacturaElectronicaException
         public readonly string $body,
         string $message = '',
     ) {
-        parent::__construct($message !== '' ? $message : "Hacienda recepción failed: HTTP {$status} — " . substr($body, 0, 600));
+        parent::__construct($message !== '' ? $message : "Hacienda recepción failed: HTTP {$status} — ".substr($body, 0, 600));
     }
 }

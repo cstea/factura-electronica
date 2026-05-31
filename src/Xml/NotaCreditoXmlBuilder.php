@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Xml;
 
@@ -23,9 +25,6 @@ final class NotaCreditoXmlBuilder implements DocumentBuilder
 
     private const NS = 'https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/notaCreditoElectronica';
 
-    /** Tarifa code 01 = service/good not subject to IVA ("no sujeto"). */
-    private const TARIFA_NO_SUJETO = '01';
-
     public function build(object $dto, string $clave): DOMDocument
     {
         if (! $dto instanceof NotaCreditoDto) {
@@ -44,9 +43,7 @@ final class NotaCreditoXmlBuilder implements DocumentBuilder
         $this->el($doc, $root, 'Clave', $clave);
         $this->el($doc, $root, 'ProveedorSistemas', $dto->proveedorSistemas);
 
-        if ($dto->codigoActividadEmisor !== null) {
-            $this->el($doc, $root, 'CodigoActividadEmisor', $dto->codigoActividadEmisor);
-        }
+        $this->el($doc, $root, 'CodigoActividadEmisor', $dto->codigoActividadEmisor);
         if ($dto->codigoActividadReceptor !== null) {
             $this->el($doc, $root, 'CodigoActividadReceptor', $dto->codigoActividadReceptor);
         }

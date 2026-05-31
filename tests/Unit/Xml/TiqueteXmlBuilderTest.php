@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Xml;
 
@@ -11,6 +13,7 @@ use Stea\FacturaElectronica\Dtos\EmisorDto;
 use Stea\FacturaElectronica\Dtos\IdentificacionDto;
 use Stea\FacturaElectronica\Dtos\ImpuestoDto;
 use Stea\FacturaElectronica\Dtos\LineaDetalleDto;
+use Stea\FacturaElectronica\Dtos\ReceptorDto;
 use Stea\FacturaElectronica\Dtos\TiqueteDto;
 use Stea\FacturaElectronica\Dtos\UbicacionDto;
 use Stea\FacturaElectronica\Enums\Situacion;
@@ -75,7 +78,7 @@ final class TiqueteXmlBuilderTest extends TestCase
     public function test_signed_te_passes_xsd(): void
     {
         $fechaEmision = new DateTimeImmutable('2026-05-29T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001040000000001',
@@ -83,14 +86,14 @@ final class TiqueteXmlBuilderTest extends TestCase
             codigoSeguridad: '00000001',
         );
 
-        $builder = new TiqueteXmlBuilder();
+        $builder = new TiqueteXmlBuilder;
         $doc = $builder->build($this->dto(), $clave);
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'Signed TE must pass XSD: '.implode('; ', $validator->errors()));
@@ -99,7 +102,7 @@ final class TiqueteXmlBuilderTest extends TestCase
     public function test_signed_te_with_receptor_passes_xsd(): void
     {
         $fechaEmision = new DateTimeImmutable('2026-05-29T10:00:00-06:00');
-        $clave = (new ClaveGenerator())->generate(
+        $clave = (new ClaveGenerator)->generate(
             cedula: '3101000000',
             fecha: $fechaEmision,
             consecutivo: '00100001040000000002',
@@ -123,7 +126,7 @@ final class TiqueteXmlBuilderTest extends TestCase
                 ),
                 correoElectronico: 'emisor@example.com',
             ),
-            receptor: new \Stea\FacturaElectronica\Dtos\ReceptorDto(
+            receptor: new ReceptorDto(
                 nombre: 'COMPRADOR ANONIMO',
             ),
             lineas: [
@@ -149,14 +152,14 @@ final class TiqueteXmlBuilderTest extends TestCase
             tipoCambio: 1.0,
         );
 
-        $builder = new TiqueteXmlBuilder();
+        $builder = new TiqueteXmlBuilder;
         $doc = $builder->build($dtoWithReceptor, $clave);
-        $signed = (new XadesEpesSigner())->sign($doc, $this->cert());
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
 
-        $wire = new DOMDocument();
+        $wire = new DOMDocument;
         $wire->loadXML((string) $signed->saveXML());
 
-        $validator = new XsdValidator();
+        $validator = new XsdValidator;
         $passes = $validator->validate($wire, $builder->xsdPath());
 
         $this->assertTrue($passes, 'Signed TE with receptor must pass XSD: '.implode('; ', $validator->errors()));

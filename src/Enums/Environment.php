@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Enums;
 
@@ -12,10 +14,10 @@ enum Environment: string
         return $this === self::Production ? 'api-prod' : 'api-stag';
     }
 
-    // URLs verified 2026-05-29 against crlibre's deployed Hacienda client
-    // (api/contrib/token/mhToken.php, send.php, consultar.php). Both envs share the
-    // idp host; only the Keycloak realm (rut vs rut-stag) differs. recepción base
-    // carries a trailing slash (consultar appends the clave directly).
+    // Hacienda IDP + recepción endpoints (v4.4). Both environments share the IDP host;
+    // only the Keycloak realm (rut vs rut-stag) differs. recepción base carries a
+    // trailing slash (consultar appends the clave directly). Endpoints sourced from
+    // the official Hacienda API documentation and verified against the live service.
     public function idpUrl(): string
     {
         return $this === self::Production

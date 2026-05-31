@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Feature;
 
@@ -31,19 +33,19 @@ final class ManagerEmitTest extends TestCase
 {
     public function test_emits_fee_end_to_end(): void
     {
-        $http = new HttpFactory();
+        $http = new HttpFactory;
         $http->fake([
             '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
             '*recepcion*' => $http->response('', 202),
         ]);
 
-        $registry = new BuilderRegistry();
-        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder());
+        $registry = new BuilderRegistry;
+        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder);
 
         $cert = SigningCertificate::fromPath(__DIR__.'/../fixtures/cert/test.p12', '1234');
         $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
 
-        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator(), new XadesEpesSigner(), $client, $cert);
+        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert);
 
         $dto = $this->dtoFromGolden();
         $result = $manager->emitir(TipoDocumento::FacturaExportacion, $dto);
@@ -67,19 +69,19 @@ final class ManagerEmitTest extends TestCase
 
     public function test_emits_mensaje_receptor_end_to_end(): void
     {
-        $http = new HttpFactory();
+        $http = new HttpFactory;
         $http->fake([
             '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
             '*recepcion*' => $http->response('', 202),
         ]);
 
-        $registry = new BuilderRegistry();
-        $registry->register(TipoDocumento::MensajeReceptorAceptado, new MensajeReceptorXmlBuilder());
+        $registry = new BuilderRegistry;
+        $registry->register(TipoDocumento::MensajeReceptorAceptado, new MensajeReceptorXmlBuilder);
 
         $cert = SigningCertificate::fromPath(__DIR__.'/../fixtures/cert/test.p12', '1234');
         $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
 
-        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator(), new XadesEpesSigner(), $client, $cert);
+        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert);
 
         $dto = new MensajeReceptorDto(
             claveComprobante: '50601012600310100000000100001050000000001100000001',
@@ -119,11 +121,11 @@ final class ManagerEmitTest extends TestCase
 
     public function test_consultar_returns_resultado_with_aceptado_estado(): void
     {
-        $http = new HttpFactory();
+        $http = new HttpFactory;
         $http->fake([
             '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
             '*recepcion*' => $http->response([
-                'ind-estado'   => 'aceptado',
+                'ind-estado' => 'aceptado',
                 'respuesta-xml' => base64_encode('<MensajeHacienda/>'),
             ], 200),
         ]);
@@ -138,11 +140,11 @@ final class ManagerEmitTest extends TestCase
 
     public function test_consultar_throws_rejected_exception_with_respuesta_xml(): void
     {
-        $http = new HttpFactory();
+        $http = new HttpFactory;
         $http->fake([
             '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
             '*recepcion*' => $http->response([
-                'ind-estado'   => 'rechazado',
+                'ind-estado' => 'rechazado',
                 'respuesta-xml' => base64_encode('<MensajeRechazo/>'),
             ], 200),
         ]);
@@ -162,13 +164,13 @@ final class ManagerEmitTest extends TestCase
 
     private function makeManager(HttpFactory $http): FacturaElectronicaManager
     {
-        $registry = new BuilderRegistry();
-        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder());
+        $registry = new BuilderRegistry;
+        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder);
 
         $cert = SigningCertificate::fromPath(__DIR__.'/../fixtures/cert/test.p12', '1234');
         $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
 
-        return new FacturaElectronicaManager($registry, new ClaveGenerator(), new XadesEpesSigner(), $client, $cert);
+        return new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert);
     }
 
     private function dtoFromGolden(): FacturaExportacionDto

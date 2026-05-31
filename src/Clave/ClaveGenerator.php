@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Clave;
 
@@ -27,10 +29,10 @@ final class ClaveGenerator
         }
 
         return self::PAIS
-            . $fecha->format('dmy')
-            . str_pad($cedulaDigits, 12, '0', STR_PAD_LEFT)
-            . $consecutivo
-            . $situacion->value
-            . $codigoSeguridad;
+            .$fecha->format('dmy')
+            .str_pad($cedulaDigits, 12, '0', STR_PAD_LEFT)
+            .$consecutivo
+            .$situacion->value
+            .$codigoSeguridad;
     }
 }

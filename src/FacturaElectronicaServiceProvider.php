@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica;
 
@@ -27,16 +29,16 @@ final class FacturaElectronicaServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/factura-electronica.php', 'factura-electronica');
 
         $this->app->singleton(BuilderRegistry::class, function (): BuilderRegistry {
-            $registry = new BuilderRegistry();
-            $registry->register(TipoDocumento::Factura, new FacturaXmlBuilder());
-            $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder());
-            $registry->register(TipoDocumento::FacturaCompra, new FacturaCompraXmlBuilder());
-            $registry->register(TipoDocumento::NotaCredito, new NotaCreditoXmlBuilder());
-            $registry->register(TipoDocumento::NotaDebito, new NotaDebitoXmlBuilder());
-            $registry->register(TipoDocumento::Tiquete, new TiqueteXmlBuilder());
+            $registry = new BuilderRegistry;
+            $registry->register(TipoDocumento::Factura, new FacturaXmlBuilder);
+            $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder);
+            $registry->register(TipoDocumento::FacturaCompra, new FacturaCompraXmlBuilder);
+            $registry->register(TipoDocumento::NotaCredito, new NotaCreditoXmlBuilder);
+            $registry->register(TipoDocumento::NotaDebito, new NotaDebitoXmlBuilder);
+            $registry->register(TipoDocumento::Tiquete, new TiqueteXmlBuilder);
             // One MR builder instance handles all three MR tipos (05/06/07);
             // the tipo only affects the consecutivo, which the caller supplies.
-            $registry->register(TipoDocumento::MensajeReceptorAceptado, new MensajeReceptorXmlBuilder());
+            $registry->register(TipoDocumento::MensajeReceptorAceptado, new MensajeReceptorXmlBuilder);
 
             return $registry;
         });
@@ -59,8 +61,8 @@ final class FacturaElectronicaServiceProvider extends ServiceProvider
 
             return new FacturaElectronicaManager(
                 $app->make(BuilderRegistry::class),
-                new ClaveGenerator(),
-                new XadesEpesSigner(),
+                new ClaveGenerator,
+                new XadesEpesSigner,
                 $app->make(HaciendaClient::class),
                 SigningCertificate::fromPath(
                     (string) $config['certificate']['path'],

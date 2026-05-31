@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * GATED SANDBOX EMISSION TEST — FEC (Factura Electrónica de Compra, tipo 08)
@@ -75,7 +77,7 @@ final class SandboxFecTest extends TestCase
         // We use a high random sequence (9 000 000 000–9 999 999 999) to avoid
         // colliding with any real submitted invoices.
         $secuencia = str_pad((string) random_int(9_000_000_000, 9_999_999_999), 10, '0', STR_PAD_LEFT);
-        $consecutivo = '001' . '00001' . '08' . $secuencia; // 20 digits total
+        $consecutivo = '001'.'00001'.'08'.$secuencia; // 20 digits total
 
         $this->assertSame(20, strlen($consecutivo), 'Consecutivo must be exactly 20 digits.');
 
@@ -128,7 +130,7 @@ final class SandboxFecTest extends TestCase
             // TipoDocIR 16 = otro; Codigo 11 = anula documento de referencia externo.
             informacionReferencia: new InformacionReferenciaDto(
                 tipoDocIR: '16',
-                numero: 'TEST' . random_int(100000, 999999),
+                numero: 'TEST'.random_int(100000, 999999),
                 fechaEmisionIR: new DateTimeImmutable('now'),
                 codigo: '11',
                 razon: 'PRUEBA',
@@ -166,8 +168,8 @@ final class SandboxFecTest extends TestCase
             } catch (HaciendaRejectedException $e) {
                 // consultar() throws when estado=rechazado — capture and fail with detail.
                 $this->fail(
-                    "Hacienda RECHAZADO on attempt {$attempt} for clave {$result->clave}.\n" .
-                    "respuestaXml:\n" . $e->respuestaXml,
+                    "Hacienda RECHAZADO on attempt {$attempt} for clave {$result->clave}.\n".
+                    "respuestaXml:\n".$e->respuestaXml,
                 );
             }
 
@@ -181,8 +183,8 @@ final class SandboxFecTest extends TestCase
         $this->assertSame(
             EstadoComprobante::Aceptado,
             $finalEstado,
-            "Expected estado=aceptado after polling {$maxAttempts} times for clave {$result->clave}. " .
-            "Got: {$finalEstado?->value}.\nrespuestaXml:\n{$finalRespuestaXml}",
+            "Expected estado=aceptado after polling {$maxAttempts} times for clave {$result->clave}. ".
+            "Got: {$finalEstado->value}.\nrespuestaXml:\n{$finalRespuestaXml}",
         );
     }
 }

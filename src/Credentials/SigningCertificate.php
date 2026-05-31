@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Credentials;
 
@@ -25,8 +27,18 @@ final class SigningCertificate
         return new self($bytes, $pin);
     }
 
-    public function contents(): string { return $this->contents; }
-    public function pin(): string { return $this->pin; }
+    public function contents(): string
+    {
+        return $this->contents;
+    }
 
-    public function __debugInfo(): array { return ['contents' => '***', 'pin' => '***']; }
+    public function pin(): string
+    {
+        return $this->pin;
+    }
+
+    public function __debugInfo(): array
+    {
+        return ['contents' => '***', 'pin' => '***'];
+    }
 }

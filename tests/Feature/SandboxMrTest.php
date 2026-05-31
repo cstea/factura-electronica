@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * GATED SANDBOX EMISSION TEST — MR (Mensaje Receptor, tipo 05)
@@ -86,7 +88,7 @@ final class SandboxMrTest extends TestCase
         // We use a high random sequence (9 000 000 000–9 999 999 999) to avoid
         // colliding with any real submitted MRs.
         $secuencia = str_pad((string) random_int(9_000_000_000, 9_999_999_999), 10, '0', STR_PAD_LEFT);
-        $consecutivo = '001' . '00001' . '05' . $secuencia; // 20 digits total
+        $consecutivo = '001'.'00001'.'05'.$secuencia; // 20 digits total
 
         $this->assertSame(20, strlen($consecutivo), 'Consecutivo must be exactly 20 digits.');
 
@@ -132,8 +134,8 @@ final class SandboxMrTest extends TestCase
 
             $this->assertTrue(
                 $isDuplicate,
-                "Hacienda recepción returned HTTP {$e->status} with an unexpected (non-duplicate) error body.\n" .
-                "This indicates a malformed payload — NOT a sandbox limitation.\n" .
+                "Hacienda recepción returned HTTP {$e->status} with an unexpected (non-duplicate) error body.\n".
+                "This indicates a malformed payload — NOT a sandbox limitation.\n".
                 "Response body:\n{$e->body}",
             );
 
@@ -186,8 +188,8 @@ final class SandboxMrTest extends TestCase
 
                 // Any other rejection reason is an actual failure.
                 $this->fail(
-                    "Hacienda RECHAZADO (unexpected reason) on attempt {$attempt} for clave " . self::SYNTH_CLAVE . ".\n" .
-                    "respuestaXml:\n" . $e->respuestaXml,
+                    "Hacienda RECHAZADO (unexpected reason) on attempt {$attempt} for clave ".self::SYNTH_CLAVE.".\n".
+                    "respuestaXml:\n".$e->respuestaXml,
                 );
             }
 
@@ -209,7 +211,7 @@ final class SandboxMrTest extends TestCase
             // Expected sandbox limitation — recepción accepted our payload (Enviado
             // asserted above) and -29 confirms the rejection is only because sandbox
             // doesn't know this production clave. This is a pass.
-            $this->assertTrue(true, 'MR accepted by recepción; sandbox rejected with expected -29 (production clave not in sandbox ledger).');
+            $this->addToAssertionCount(1); // recepción accepted our payload; sandbox rejected with expected -29 (production clave not in sandbox ledger)
 
             return;
         }
@@ -217,7 +219,7 @@ final class SandboxMrTest extends TestCase
         $this->assertNotContains(
             $finalEstado,
             [EstadoComprobante::Rechazado, EstadoComprobante::Error],
-            "MR was rejected or errored after polling {$maxAttempts} times for clave " . self::SYNTH_CLAVE . ". " .
+            "MR was rejected or errored after polling {$maxAttempts} times for clave ".self::SYNTH_CLAVE.'. '.
             "Got: {$finalEstado?->value}.\nrespuestaXml:\n{$finalRespuestaXml}",
         );
     }

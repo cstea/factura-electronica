@@ -148,8 +148,9 @@ and `CodigoActividadReceptor`):
 
 ## Contributing
 
-Issues and PRs welcome. Please do not include real cédulas, certificates, signatures, or invoice data
-in fixtures or examples — use synthetic values only.
+Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, testing, static analysis,
+code style, and PR guidelines. Please do not include real cédulas, certificates, signatures, or
+invoice data in fixtures or examples — use synthetic values only.
 
 ## License
 

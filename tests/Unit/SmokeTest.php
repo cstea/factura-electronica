@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit;
 
@@ -9,6 +11,7 @@ final class SmokeTest extends TestCase
 {
     public function test_autoload_and_base_exception_resolve(): void
     {
-        $this->assertTrue(is_subclass_of(FacturaElectronicaException::class, \RuntimeException::class));
+        $e = new FacturaElectronicaException('test');
+        $this->assertInstanceOf(\RuntimeException::class, $e);
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Hacienda;
 
@@ -16,7 +18,7 @@ final class HaciendaClient
         private readonly ApiCredentials $credentials,
         ?TokenStore $store = null,
     ) {
-        $this->store = $store ?? new TokenStore();
+        $this->store = $store ?? new TokenStore;
     }
 
     public function token(): string
@@ -27,9 +29,9 @@ final class HaciendaClient
 
         $resp = $this->http->asForm()->post($this->credentials->environment->idpUrl(), [
             'grant_type' => 'password',
-            'client_id'  => $this->credentials->environment->clientId(),
-            'username'   => $this->credentials->username,
-            'password'   => $this->credentials->password,
+            'client_id' => $this->credentials->environment->clientId(),
+            'username' => $this->credentials->username,
+            'password' => $this->credentials->password,
         ]);
 
         if (! $resp->successful()) {
@@ -37,23 +39,23 @@ final class HaciendaClient
         }
 
         $accessToken = (string) $resp->json('access_token');
-        $expiresIn   = (int) $resp->json('expires_in');
+        $expiresIn = (int) $resp->json('expires_in');
         $this->store->set($accessToken, time() + $expiresIn - 30);
 
         return $accessToken;
     }
 
     /**
-     * @param array{emisorTipo:string,emisorNumero:string,receptorTipo?:string,receptorNumero?:string,fecha?:string} $payload
+     * @param  array{emisorTipo:string,emisorNumero:string,receptorTipo?:string,receptorNumero?:string,fecha?:string,consecutivoReceptor?:string}  $payload
      * @return array{clave:string,status:int}
      */
     public function send(string $clave, string $base64SignedXml, array $payload): array
     {
         $body = [
-            'clave'          => $clave,
-            'fecha'          => $payload['fecha'] ?? date('c'),
-            'emisor'         => [
-                'tipoIdentificacion'   => $payload['emisorTipo'],
+            'clave' => $clave,
+            'fecha' => $payload['fecha'] ?? date('c'),
+            'emisor' => [
+                'tipoIdentificacion' => $payload['emisorTipo'],
                 'numeroIdentificacion' => $payload['emisorNumero'],
             ],
             'comprobanteXml' => $base64SignedXml,
@@ -61,7 +63,7 @@ final class HaciendaClient
 
         if (isset($payload['receptorTipo'], $payload['receptorNumero'])) {
             $body['receptor'] = [
-                'tipoIdentificacion'   => $payload['receptorTipo'],
+                'tipoIdentificacion' => $payload['receptorTipo'],
                 'numeroIdentificacion' => $payload['receptorNumero'],
             ];
         }
@@ -93,7 +95,7 @@ final class HaciendaClient
             ->get($this->credentials->environment->recepcionUrl().$clave);
 
         return [
-            'estado'       => (string) $resp->json('ind-estado'),
+            'estado' => (string) $resp->json('ind-estado'),
             'respuestaXml' => base64_decode((string) $resp->json('respuesta-xml'), true) ?: '',
         ];
     }

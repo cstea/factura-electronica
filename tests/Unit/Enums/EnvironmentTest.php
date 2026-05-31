@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Enums;
 
@@ -7,7 +9,7 @@ use Stea\FacturaElectronica\Enums\Environment;
 
 final class EnvironmentTest extends TestCase
 {
-    public function test_sandbox_urls_match_crlibre_verified_values(): void
+    public function test_sandbox_urls_match_hacienda_endpoints(): void
     {
         $env = Environment::Sandbox;
         $this->assertSame('api-stag', $env->clientId());
@@ -21,7 +23,7 @@ final class EnvironmentTest extends TestCase
         );
     }
 
-    public function test_production_urls_match_crlibre_verified_values(): void
+    public function test_production_urls_match_hacienda_endpoints(): void
     {
         $env = Environment::Production;
         $this->assertSame('api-prod', $env->clientId());

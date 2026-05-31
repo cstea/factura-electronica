@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Stea\FacturaElectronica;
 
@@ -41,13 +43,13 @@ final class FacturaElectronicaManager
         $signedXml = (string) $signed->saveXML();
 
         $payload = [
-            'emisorTipo'   => $dto->tipoIdentificacionEmisor(),
+            'emisorTipo' => $dto->tipoIdentificacionEmisor(),
             'emisorNumero' => $dto->cedulaEmisor(),
-            'fecha'        => $dto->fechaEmision()->format('Y-m-d\TH:i:sP'),
+            'fecha' => $dto->fechaEmision()->format('Y-m-d\TH:i:sP'),
         ];
 
         if (($r = $dto->receptorIdentificacion()) !== null) {
-            $payload['receptorTipo']   = $r->tipo;
+            $payload['receptorTipo'] = $r->tipo;
             $payload['receptorNumero'] = $r->numero;
         }
 
@@ -83,12 +85,12 @@ final class FacturaElectronicaManager
         // (9 digits => física '01', 10 digits => jurídica '02').
         // consecutivoReceptor is required by Hacienda for MR recepción submissions.
         $this->client->send($clave, base64_encode($signedXml), [
-            'emisorTipo'           => $this->tipoIdentificacion($dto->numeroCedulaEmisor),
-            'emisorNumero'         => $dto->numeroCedulaEmisor,
-            'receptorTipo'         => $this->tipoIdentificacion($dto->numeroCedulaReceptor),
-            'receptorNumero'       => $dto->numeroCedulaReceptor,
-            'fecha'                => $dto->fechaEmisionDoc->format('Y-m-d\TH:i:sP'),
-            'consecutivoReceptor'  => $dto->numeroConsecutivoReceptor(),
+            'emisorTipo' => $this->tipoIdentificacion($dto->numeroCedulaEmisor),
+            'emisorNumero' => $dto->numeroCedulaEmisor,
+            'receptorTipo' => $this->tipoIdentificacion($dto->numeroCedulaReceptor),
+            'receptorNumero' => $dto->numeroCedulaReceptor,
+            'fecha' => $dto->fechaEmisionDoc->format('Y-m-d\TH:i:sP'),
+            'consecutivoReceptor' => $dto->numeroConsecutivoReceptor(),
         ]);
 
         return new ResultadoDto(
