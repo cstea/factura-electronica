@@ -27,7 +27,7 @@ use Stea\FacturaElectronica\Xml\XsdValidator;
  */
 final class FacturaCompraXmlBuilderTest extends TestCase
 {
-    private function dto(): FacturaCompraDto
+    private function dto(?float $baseImponible = 9.99): FacturaCompraDto
     {
         return new FacturaCompraDto(
             consecutivo: '00100001080000000001',
@@ -68,7 +68,7 @@ final class FacturaCompraXmlBuilderTest extends TestCase
                     impuestos: [
                         new ImpuestoDto(codigo: '01', codigoTarifa: '10', tarifa: 0.0, monto: 0.0),
                     ],
-                    baseImponible: 9.99,
+                    baseImponible: $baseImponible,
                 ),
             ],
             informacionReferencia: new InformacionReferenciaDto(
@@ -131,5 +131,36 @@ final class FacturaCompraXmlBuilderTest extends TestCase
         $this->assertStringContainsString('<FacturaElectronicaCompra', $xml);
         $this->assertStringContainsString($clave, $xml);
         $this->assertSame(50, strlen($clave));
+    }
+
+    /**
+     * Regression: the FEC XSD requires BaseImponible before Impuesto (no minOccurs="0").
+     * When the caller omits it (null), the builder must fall back to SubTotal rather than
+     * drop the element — otherwise Hacienda rejects with cvc-complex-type.2.4.a.
+     */
+    public function test_fec_without_base_imponible_still_passes_xsd(): void
+    {
+        $clave = (new ClaveGenerator)->generate(
+            cedula: '3101000000',
+            fecha: new DateTimeImmutable('2026-01-01T10:00:00-06:00'),
+            consecutivo: '00100001080000000001',
+            situacion: Situacion::Normal,
+            codigoSeguridad: '00000001',
+        );
+
+        $builder = new FacturaCompraXmlBuilder;
+        $doc = $builder->build($this->dto(baseImponible: null), $clave);
+
+        $this->assertStringContainsString('<BaseImponible>', (string) $doc->saveXML());
+
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
+        $wire = new DOMDocument;
+        $wire->loadXML((string) $signed->saveXML());
+
+        $validator = new XsdValidator;
+        $this->assertTrue(
+            $validator->validate($wire, $builder->xsdPath()),
+            'FEC without explicit BaseImponible must still pass XSD: '.implode('; ', $validator->errors()),
+        );
     }
 }

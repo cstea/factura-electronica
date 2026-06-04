@@ -129,9 +129,10 @@ final class FacturaCompraXmlBuilder implements DocumentBuilder
         $this->el($doc, $node, 'MontoTotal', $this->money($linea->montoTotal));
         $this->el($doc, $node, 'SubTotal', $this->money($linea->subTotal));
 
-        if ($linea->baseImponible !== null) {
-            $this->el($doc, $node, 'BaseImponible', $this->money($linea->baseImponible));
-        }
+        // BaseImponible is required in the FEC (facturaElectronicaCompra) XSD and must
+        // precede Impuesto (no minOccurs="0") — Hacienda rejects the document otherwise.
+        // Default to SubTotal when the caller didn't set it, like the NC/ND/TE builders.
+        $this->el($doc, $node, 'BaseImponible', $this->money($linea->baseImponible ?? $linea->subTotal));
 
         foreach ($linea->impuestos as $impuesto) {
             $imp = $this->el($doc, $node, 'Impuesto');
