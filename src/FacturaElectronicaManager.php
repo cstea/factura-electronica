@@ -33,20 +33,30 @@ final class FacturaElectronicaManager
     ) {}
 
     /**
-     * Builds, validates (XSD) and signs a comprobante without sending it. Throws {@see XmlBuildException} with the schema errors
+     * Builds, validates (XSD) and signs a comprobante without sending it. Pass `$clave` when it was already assigned (it is respected). Throws {@see XmlBuildException} with the schema errors
      * when the XML would not validate, so bad data never reaches Hacienda.
      */
-    public function preparar(TipoDocumento $tipo, ComprobanteRequest $dto, ?string $codigoSeguridad = null): Preparado
+    public function preparar(TipoDocumento $tipo, ComprobanteRequest $dto, ?string $codigoSeguridad = null, ?string $clave = null): Preparado
     {
-        $codigoSeguridad ??= str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+        if ($clave !== null) {
+            // Quien numera el comprobante ya le asignó su clave (se imprime y se referencia antes de firmar): se respeta, pero debe ser
+            // coherente con el comprobante, o Hacienda lo rechazaría.
+            if (preg_match('/^\d{50}$/', $clave) !== 1 || substr($clave, 21, 20) !== $dto->consecutivo()) {
+                throw new XmlBuildException('The clave does not match the comprobante consecutivo.');
+            }
 
-        $clave = $this->claveGenerator->generate(
-            $dto->cedulaEmisor(),
-            $dto->fechaEmision(),
-            $dto->consecutivo(),
-            $dto->situacion(),
-            $codigoSeguridad,
-        );
+            $codigoSeguridad = substr($clave, 42, 8);
+        } else {
+            $codigoSeguridad ??= str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+
+            $clave = $this->claveGenerator->generate(
+                $dto->cedulaEmisor(),
+                $dto->fechaEmision(),
+                $dto->consecutivo(),
+                $dto->situacion(),
+                $codigoSeguridad,
+            );
+        }
 
         $builder = $this->registry->for($tipo);
         $doc = $builder->build($dto, $clave);
