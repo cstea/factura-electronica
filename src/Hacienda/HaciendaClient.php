@@ -21,6 +21,9 @@ final class HaciendaClient
         $this->store = $store ?? new TokenStore;
     }
 
+    /**
+     * @phpstan-impure Caches the token in the store, so repeated calls can differ.
+     */
     public function token(): string
     {
         if ($this->store->valid(time())) {
