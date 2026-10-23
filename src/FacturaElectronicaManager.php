@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace Stea\FacturaElectronica;
 
+use DOMDocument;
 use Stea\FacturaElectronica\Clave\ClaveGenerator;
 use Stea\FacturaElectronica\Credentials\SigningCertificate;
 use Stea\FacturaElectronica\Dtos\Contracts\ComprobanteRequest;
 use Stea\FacturaElectronica\Dtos\MensajeReceptorDto;
+use Stea\FacturaElectronica\Dtos\Preparado;
 use Stea\FacturaElectronica\Dtos\ResultadoDto;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
+use Stea\FacturaElectronica\Exceptions\XmlBuildException;
+use Stea\FacturaElectronica\Hacienda\EstadoConsulta;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
+use Stea\FacturaElectronica\Hacienda\RespuestaEnvio;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
 use Stea\FacturaElectronica\Xml\BuilderRegistry;
+use Stea\FacturaElectronica\Xml\XsdValidator;
 
 final class FacturaElectronicaManager
 {
@@ -26,9 +32,13 @@ final class FacturaElectronicaManager
         private readonly SigningCertificate $certificate,
     ) {}
 
-    public function emitir(TipoDocumento $tipo, ComprobanteRequest $dto): ResultadoDto
+    /**
+     * Builds, validates (XSD) and signs a comprobante without sending it. Throws {@see XmlBuildException} with the schema errors
+     * when the XML would not validate, so bad data never reaches Hacienda.
+     */
+    public function preparar(TipoDocumento $tipo, ComprobanteRequest $dto, ?string $codigoSeguridad = null): Preparado
     {
-        $codigoSeguridad = str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+        $codigoSeguridad ??= str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
 
         $clave = $this->claveGenerator->generate(
             $dto->cedulaEmisor(),
@@ -38,9 +48,19 @@ final class FacturaElectronicaManager
             $codigoSeguridad,
         );
 
-        $doc = $this->registry->for($tipo)->build($dto, $clave);
-        $signed = $this->signer->sign($doc, $this->certificate);
-        $signedXml = (string) $signed->saveXML();
+        $builder = $this->registry->for($tipo);
+        $doc = $builder->build($dto, $clave);
+
+        $signedXml = (string) $this->signer->sign($doc, $this->certificate)->saveXML();
+
+        // Validate what Hacienda will receive: the signed text, re-read (the schema requires the Signature node).
+        $leido = new DOMDocument;
+        $leido->loadXML($signedXml);
+        $validador = new XsdValidator;
+
+        if (! $validador->validate($leido, $builder->xsdPath())) {
+            throw new XmlBuildException('The comprobante does not validate against the XSD: '.implode(' | ', array_slice($validador->errors(), 0, 5)));
+        }
 
         $payload = [
             'emisorTipo' => $dto->tipoIdentificacionEmisor(),
@@ -53,12 +73,30 @@ final class FacturaElectronicaManager
             $payload['receptorNumero'] = $r->numero;
         }
 
-        $this->client->send($clave, base64_encode($signedXml), $payload);
+        return new Preparado($clave, $dto->consecutivo(), $codigoSeguridad, $signedXml, $payload);
+    }
+
+    /** Sends an already signed comprobante. Never throws on an HTTP answer; see {@see RespuestaEnvio}. */
+    public function enviar(Preparado $preparado): RespuestaEnvio
+    {
+        return $this->client->enviar($preparado->clave, base64_encode($preparado->xmlFirmado), $preparado->payload);
+    }
+
+    /** The state Hacienda reports for a clave, without throwing. */
+    public function consultarEstado(string $clave): EstadoConsulta
+    {
+        return $this->client->consultarEstado($clave);
+    }
+
+    public function emitir(TipoDocumento $tipo, ComprobanteRequest $dto): ResultadoDto
+    {
+        $preparado = $this->preparar($tipo, $dto);
+        $this->client->send($preparado->clave, base64_encode($preparado->xmlFirmado), $preparado->payload);
 
         return new ResultadoDto(
-            clave: $clave,
+            clave: $preparado->clave,
             consecutivo: $dto->consecutivo(),
-            signedXml: $signedXml,
+            signedXml: $preparado->xmlFirmado,
             estado: EstadoComprobante::Enviado,
         );
     }

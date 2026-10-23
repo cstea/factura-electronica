@@ -14,5 +14,7 @@ final readonly class EmisorDto
         public ?string $nombreComercial = null,
         public ?TelefonoDto $telefono = null,
         public ?string $otrasSenasExtranjero = null,
+        /** @var string[] correos adicionales (el XSD admite hasta 4 en total) */
+        public array $correos = [],
     ) {}
 }
