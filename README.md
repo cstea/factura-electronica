@@ -5,7 +5,7 @@
 [![PHP](https://img.shields.io/packagist/dependency-v/stea/factura-electronica/php.svg)](composer.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A native PHP 8.5 / Laravel package for **Costa Rica factura electrónica v4.4**. It builds
+A native PHP 8.3 / 8.4 / 8.5 / Laravel package for **Costa Rica factura electrónica v4.4**. It builds
 comprobante XML, signs it with **XAdES-EPES** using a Hacienda-issued PKCS#12 certificate, and
 submits it to the Ministerio de Hacienda reception API — with no dependency on external SOAP
 wrappers, Java signers, or proprietary tooling.
@@ -35,7 +35,7 @@ Laravel dependency and is independently testable.
 
 ## Requirements
 
-- PHP **8.5+**, `ext-openssl`, `ext-dom`, `ext-libxml`
+- PHP **8.3+**, `ext-openssl`, `ext-dom`, `ext-libxml`
 - A Hacienda-issued PKCS#12 (`.p12`) certificate and its PIN
 - Hacienda API credentials (username / password / `client_id`) for your environment
 
