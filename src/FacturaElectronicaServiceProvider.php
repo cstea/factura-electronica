@@ -68,6 +68,7 @@ final class FacturaElectronicaServiceProvider extends ServiceProvider
                     (string) $config['certificate']['path'],
                     (string) $config['certificate']['pin'],
                 ),
+                (bool) ($config['validate_schema'] ?? true),
             );
         });
     }

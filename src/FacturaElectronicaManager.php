@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Stea\FacturaElectronica;
 
+use DOMDocument;
 use Stea\FacturaElectronica\Clave\ClaveGenerator;
 use Stea\FacturaElectronica\Credentials\SigningCertificate;
 use Stea\FacturaElectronica\Dtos\Contracts\ComprobanteRequest;
@@ -12,9 +13,11 @@ use Stea\FacturaElectronica\Dtos\ResultadoDto;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
+use Stea\FacturaElectronica\Exceptions\SchemaValidationException;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
 use Stea\FacturaElectronica\Xml\BuilderRegistry;
+use Stea\FacturaElectronica\Xml\XsdValidator;
 
 final class FacturaElectronicaManager
 {
@@ -24,6 +27,12 @@ final class FacturaElectronicaManager
         private readonly XadesEpesSigner $signer,
         private readonly HaciendaClient $client,
         private readonly SigningCertificate $certificate,
+        /**
+         * Check every signed document against the bundled v4.4 XSD before it
+         * is sent. Turn off only if Hacienda's published schema and its
+         * recepción disagree.
+         */
+        private readonly bool $validateSchema = true,
     ) {}
 
     public function emitir(TipoDocumento $tipo, ComprobanteRequest $dto): ResultadoDto
@@ -38,9 +47,11 @@ final class FacturaElectronicaManager
             $codigoSeguridad,
         );
 
-        $doc = $this->registry->for($tipo)->build($dto, $clave);
+        $builder = $this->registry->for($tipo);
+        $doc = $builder->build($dto, $clave);
         $signed = $this->signer->sign($doc, $this->certificate);
         $signedXml = (string) $signed->saveXML();
+        $this->assertSchemaValid($clave, $signedXml, $builder->xsdPath());
 
         $payload = [
             'emisorTipo' => $dto->tipoIdentificacionEmisor(),
@@ -75,9 +86,11 @@ final class FacturaElectronicaManager
     {
         $clave = $dto->claveComprobante;
 
-        $doc = $this->registry->for(TipoDocumento::MensajeReceptorAceptado)->build($dto, $clave);
+        $builder = $this->registry->for(TipoDocumento::MensajeReceptorAceptado);
+        $doc = $builder->build($dto, $clave);
         $signed = $this->signer->sign($doc, $this->certificate);
         $signedXml = (string) $signed->saveXML();
+        $this->assertSchemaValid($clave, $signedXml, $builder->xsdPath());
 
         // For an MR the supplier is the emisor of the original comprobante and
         // STEA is the receptor (we are the obligado tributario submitting the
@@ -99,6 +112,26 @@ final class FacturaElectronicaManager
             signedXml: $signedXml,
             estado: EstadoComprobante::Enviado,
         );
+    }
+
+    /**
+     * Validate the bytes that will be sent (re-parsed, as Hacienda receives them).
+     *
+     * @throws SchemaValidationException
+     */
+    private function assertSchemaValid(string $clave, string $signedXml, string $xsdPath): void
+    {
+        if (! $this->validateSchema) {
+            return;
+        }
+
+        $wire = new DOMDocument;
+        $wire->loadXML($signedXml);
+
+        $validator = new XsdValidator;
+        if (! $validator->validate($wire, $xsdPath)) {
+            throw new SchemaValidationException($clave, $validator->errors());
+        }
     }
 
     private function tipoIdentificacion(string $cedula): string

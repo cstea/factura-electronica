@@ -22,6 +22,7 @@ use Stea\FacturaElectronica\Enums\Environment;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
+use Stea\FacturaElectronica\Exceptions\SchemaValidationException;
 use Stea\FacturaElectronica\FacturaElectronicaManager;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
@@ -65,6 +66,57 @@ final class ManagerEmitTest extends TestCase
 
             return str_contains($xml, 'ds:Signature');
         });
+    }
+
+    /**
+     * A document the v4.4 schema rejects must fail locally, before anything
+     * reaches Hacienda, so the consecutivo is not spent on a sure rejection.
+     */
+    public function test_a_schema_invalid_comprobante_is_never_sent(): void
+    {
+        $http = new HttpFactory;
+        $http->fake([
+            '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
+            '*recepcion*' => $http->response('', 202),
+        ]);
+
+        $registry = new BuilderRegistry;
+        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder);
+        $cert = SigningCertificate::fromPath(__DIR__.'/../fixtures/cert/test.p12', '1234');
+        $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
+        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert);
+
+        try {
+            // XAU left CodigoMoneda in the updated v4.4 schema.
+            $manager->emitir(TipoDocumento::FacturaExportacion, $this->dtoFromGolden('XAU'));
+            $this->fail('A schema-invalid comprobante must not be emitted.');
+        } catch (SchemaValidationException $e) {
+            $this->assertSame(50, strlen($e->clave));
+            $this->assertNotEmpty($e->errors);
+            $this->assertStringContainsString('CodigoMoneda', implode(' ', $e->errors));
+        }
+
+        $http->assertNothingSent();
+    }
+
+    /** The escape hatch: with validation off, the same document is sent as before. */
+    public function test_schema_validation_can_be_turned_off(): void
+    {
+        $http = new HttpFactory;
+        $http->fake([
+            '*protocol/openid-connect/token' => $http->response(['access_token' => 'TKN', 'expires_in' => 300], 200),
+            '*recepcion*' => $http->response('', 202),
+        ]);
+
+        $registry = new BuilderRegistry;
+        $registry->register(TipoDocumento::FacturaExportacion, new FacturaExportacionXmlBuilder);
+        $cert = SigningCertificate::fromPath(__DIR__.'/../fixtures/cert/test.p12', '1234');
+        $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
+        $manager = new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert, validateSchema: false);
+
+        $manager->emitir(TipoDocumento::FacturaExportacion, $this->dtoFromGolden('XAU'));
+
+        $http->assertSent(fn ($request) => str_contains($request->url(), 'recepcion'));
     }
 
     public function test_emits_mensaje_receptor_end_to_end(): void
@@ -173,7 +225,7 @@ final class ManagerEmitTest extends TestCase
         return new FacturaElectronicaManager($registry, new ClaveGenerator, new XadesEpesSigner, $client, $cert);
     }
 
-    private function dtoFromGolden(): FacturaExportacionDto
+    private function dtoFromGolden(string $moneda = 'USD'): FacturaExportacionDto
     {
         return new FacturaExportacionDto(
             consecutivo: '00100001090000000001',
@@ -214,7 +266,7 @@ final class ManagerEmitTest extends TestCase
             ],
             condicionVenta: '01',
             medioPago: '04',
-            moneda: 'USD',
+            moneda: $moneda,
             tipoCambio: 500.0,
         );
     }
