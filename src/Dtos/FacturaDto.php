@@ -32,6 +32,12 @@ final readonly class FacturaDto implements ComprobanteRequest
         public ?ResumenDto $resumen = null,
         /** @var InformacionReferenciaDto[] referencias adicionales (hasta 10 en total) */
         public array $referencias = [],
+        /**
+         * Referencia principal: una factura que sustituye a otra anulada por error material
+         * (código 15) o rechazada por Hacienda (código 16) debe apuntar a ella (notas 9 y 10 de
+         * los Anexos y Estructuras v4.4). Se emite antes que `referencias`.
+         */
+        public ?InformacionReferenciaDto $informacionReferencia = null,
     ) {}
 
     public function consecutivo(): string

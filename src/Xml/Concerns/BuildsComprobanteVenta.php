@@ -123,6 +123,8 @@ trait BuildsComprobanteVenta
 
         if ($dto instanceof NotaCreditoDto || $dto instanceof NotaDebitoDto) {
             $refs[] = $dto->informacionReferencia;
+        } elseif ($dto instanceof FacturaDto && $dto->informacionReferencia !== null) {
+            $refs[] = $dto->informacionReferencia;
         }
 
         foreach ($dto->referencias as $r) {
