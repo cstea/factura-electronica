@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **PHP 8.5+** with extensions `ext-openssl`, `ext-dom`, `ext-libxml`
+- **PHP 8.3+** with extensions `ext-bcmath`, `ext-openssl`, `ext-dom`, `ext-libxml`
 - The **`openssl` CLI** — `tests/bootstrap.php` auto-generates a throwaway PKCS#12 certificate for the unit test suite on first run; no real certificate is required to run tests
 - **Composer**
 
