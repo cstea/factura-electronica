@@ -13,6 +13,7 @@ use Stea\FacturaElectronica\Dtos\EmisorDto;
 use Stea\FacturaElectronica\Dtos\FacturaDto;
 use Stea\FacturaElectronica\Dtos\IdentificacionDto;
 use Stea\FacturaElectronica\Dtos\ImpuestoDto;
+use Stea\FacturaElectronica\Dtos\InformacionReferenciaDto;
 use Stea\FacturaElectronica\Dtos\LineaDetalleDto;
 use Stea\FacturaElectronica\Dtos\ReceptorDto;
 use Stea\FacturaElectronica\Dtos\TelefonoDto;
@@ -131,6 +132,111 @@ final class FacturaXmlBuilderTest extends TestCase
         $this->assertStringContainsString('<FacturaElectronica', $xml);
         $this->assertStringContainsString($clave, $xml);
         $this->assertSame(50, strlen($clave));
+    }
+
+    // ── InformacionReferencia (nota 9 / nota 10) ────────────────────────────
+
+    private function dtoConReferencia(InformacionReferenciaDto $ref): FacturaDto
+    {
+        $base = $this->dto();
+
+        return new FacturaDto(
+            consecutivo: $base->consecutivo,
+            fechaEmision: $base->fechaEmision,
+            proveedorSistemas: $base->proveedorSistemas,
+            codigoActividadEmisor: $base->codigoActividadEmisor,
+            emisor: $base->emisor,
+            receptor: $base->receptor,
+            lineas: $base->lineas,
+            codigoActividadReceptor: $base->codigoActividadReceptor,
+            condicionVenta: $base->condicionVenta,
+            medioPago: $base->medioPago,
+            moneda: $base->moneda,
+            tipoCambio: $base->tipoCambio,
+            informacionReferencia: $ref,
+        );
+    }
+
+    /** A factura replacing one Hacienda rejected: TipoDocIR 10, codigo 16. */
+    public function test_fe_with_informacion_referencia_passes_xsd_and_emits_the_block(): void
+    {
+        $fechaEmision = new DateTimeImmutable('2026-01-01T10:00:00-06:00');
+        $clave = (new ClaveGenerator)->generate(
+            cedula: '3101000000',
+            fecha: $fechaEmision,
+            consecutivo: '00100001010000000001',
+            situacion: Situacion::Normal,
+            codigoSeguridad: '00000001',
+        );
+
+        $dto = $this->dtoConReferencia(new InformacionReferenciaDto(
+            tipoDocIR: '10',
+            numero: '50601011226310100000000100001010000000001199999999',
+            fechaEmisionIR: new DateTimeImmutable('2025-12-20T09:00:00-06:00'),
+            codigo: '16',
+            razon: 'Sustituye comprobante electrónico rechazado',
+        ));
+
+        $builder = new FacturaXmlBuilder;
+        $doc = $builder->build($dto, $clave);
+        $xml = (string) $doc->saveXML();
+
+        $this->assertStringContainsString('<InformacionReferencia>', $xml);
+        $this->assertStringContainsString('<Codigo>16</Codigo>', $xml);
+        $this->assertStringContainsString('<TipoDocIR>10</TipoDocIR>', $xml);
+
+        $signed = (new XadesEpesSigner)->sign($doc, $this->cert());
+        $wire = new DOMDocument;
+        $wire->loadXML((string) $signed->saveXML());
+
+        $validator = new XsdValidator;
+        $this->assertTrue(
+            $validator->validate($wire, $builder->xsdPath()),
+            'FE with InformacionReferencia must pass XSD: '.implode('; ', $validator->errors()),
+        );
+    }
+
+    /** The block sits after ResumenFactura, which the v4.4 sequence requires. */
+    public function test_informacion_referencia_follows_resumen_factura(): void
+    {
+        $clave = (new ClaveGenerator)->generate(
+            cedula: '3101000000',
+            fecha: new DateTimeImmutable('2026-01-01T10:00:00-06:00'),
+            consecutivo: '00100001010000000001',
+            situacion: Situacion::Normal,
+            codigoSeguridad: '00000001',
+        );
+
+        $dto = $this->dtoConReferencia(new InformacionReferenciaDto(
+            tipoDocIR: '01',
+            numero: '50601011226310100000000100001010000000001199999999',
+            fechaEmisionIR: new DateTimeImmutable('2025-12-20T09:00:00-06:00'),
+            codigo: '15',
+            razon: 'Sustituye comprobante electrónico por error material',
+        ));
+
+        $xml = (string) (new FacturaXmlBuilder)->build($dto, $clave)->saveXML();
+
+        $this->assertLessThan(
+            strpos($xml, '<InformacionReferencia>'),
+            strpos($xml, '<ResumenFactura>'),
+        );
+    }
+
+    /** Without a reference the block must not appear: it is optional (minOccurs 0). */
+    public function test_fe_without_referencia_omits_the_block(): void
+    {
+        $clave = (new ClaveGenerator)->generate(
+            cedula: '3101000000',
+            fecha: new DateTimeImmutable('2026-01-01T10:00:00-06:00'),
+            consecutivo: '00100001010000000001',
+            situacion: Situacion::Normal,
+            codigoSeguridad: '00000001',
+        );
+
+        $xml = (string) (new FacturaXmlBuilder)->build($this->dto(), $clave)->saveXML();
+
+        $this->assertStringNotContainsString('<InformacionReferencia>', $xml);
     }
 
     // ── ResumenFactura: goods vs services categorisation ────────────────────

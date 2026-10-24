@@ -9,6 +9,7 @@ use DOMElement;
 use Stea\FacturaElectronica\Cabys;
 use Stea\FacturaElectronica\Dtos\EmisorDto;
 use Stea\FacturaElectronica\Dtos\FacturaDto;
+use Stea\FacturaElectronica\Dtos\InformacionReferenciaDto;
 use Stea\FacturaElectronica\Dtos\LineaDetalleDto;
 use Stea\FacturaElectronica\Dtos\ReceptorDto;
 use Stea\FacturaElectronica\Exceptions\XmlBuildException;
@@ -58,7 +59,21 @@ final class FacturaXmlBuilder implements DocumentBuilder
 
         $this->buildResumenFactura($doc, $root, $dto);
 
+        if ($dto->informacionReferencia !== null) {
+            $this->buildInformacionReferencia($doc, $root, $dto->informacionReferencia);
+        }
+
         return $doc;
+    }
+
+    private function buildInformacionReferencia(DOMDocument $doc, DOMElement $root, InformacionReferenciaDto $ref): void
+    {
+        $node = $this->el($doc, $root, 'InformacionReferencia');
+        $this->el($doc, $node, 'TipoDocIR', $ref->tipoDocIR);
+        $this->el($doc, $node, 'Numero', $ref->numero);
+        $this->el($doc, $node, 'FechaEmisionIR', $ref->fechaEmisionIR->format('Y-m-d\TH:i:sP'));
+        $this->el($doc, $node, 'Codigo', $ref->codigo);
+        $this->el($doc, $node, 'Razon', $ref->razon);
     }
 
     private function buildEmisor(DOMDocument $doc, DOMElement $root, EmisorDto $emisor): void
