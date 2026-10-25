@@ -20,6 +20,7 @@ use Stea\FacturaElectronica\Dtos\UbicacionDto;
 use Stea\FacturaElectronica\Enums\Environment;
 use Stea\FacturaElectronica\Enums\Situacion;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
+use Stea\FacturaElectronica\Exceptions\SchemaValidationException;
 use Stea\FacturaElectronica\Exceptions\XmlBuildException;
 use Stea\FacturaElectronica\FacturaElectronicaManager;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
@@ -98,8 +99,8 @@ final class PrepararTest extends TestCase
         $dto = $this->dto();
         $malo = new TiqueteDto($dto->consecutivo, $dto->fechaEmision, $dto->proveedorSistemas, '12', $dto->emisor, $dto->receptor, $dto->lineas, medioPago: '01');
 
-        $this->expectException(XmlBuildException::class);
-        $this->expectExceptionMessage('XSD');
+        $this->expectException(SchemaValidationException::class);
+        $this->expectExceptionMessage('schema');
         $this->manager(new HttpFactory)->preparar(TipoDocumento::Tiquete, $malo);
     }
 }

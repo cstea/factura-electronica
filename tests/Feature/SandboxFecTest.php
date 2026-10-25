@@ -36,6 +36,7 @@ use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
 use Stea\FacturaElectronica\FacturaElectronicaManager;
 use Stea\FacturaElectronica\FacturaElectronicaServiceProvider;
+use Stea\FacturaElectronica\Tests\Support\SandboxIdentity;
 
 final class SandboxFecTest extends TestCase
 {
@@ -72,6 +73,9 @@ final class SandboxFecTest extends TestCase
             $this->markTestSkipped('Set FE_SANDBOX=1 + FE_USERNAME/FE_PASSWORD/FE_PIN/FE_P12_PATH to run.');
         }
 
+        // The signer must be the comprobante's own taxpayer, or Hacienda answers -60.
+        $id = SandboxIdentity::fromEnv();
+
         // ── Build a fresh, collision-safe consecutivo ─────────────────────────
         // Format: sucursal(001) + terminal(00001) + tipo(08) + secuencia(10 digits)
         // We use a high random sequence (9 000 000 000–9 999 999 999) to avoid
@@ -82,7 +86,7 @@ final class SandboxFecTest extends TestCase
         $this->assertSame(20, strlen($consecutivo), 'Consecutivo must be exactly 20 digits.');
 
         // ── Seed from FacturaCompraXmlBuilderTest values ──────────────────────
-        // Foreign supplier emisor (idType 05), local receptor 3101000000,
+        // Foreign supplier emisor (idType 05), local receptor = the certificate's taxpayer,
         // codigoActividadReceptor 6201.0, one line, moneda USD.
         $dto = new FacturaCompraDto(
             consecutivo: $consecutivo,
@@ -100,7 +104,7 @@ final class SandboxFecTest extends TestCase
             // Receptor = local buyer with Ubicacion
             receptor: new ReceptorDto(
                 nombre: 'MI EMPRESA S.A.',
-                identificacion: new IdentificacionDto('02', '3101000000'),
+                identificacion: new IdentificacionDto($id->tipo, $id->cedula),
                 ubicacion: new UbicacionDto(
                     provincia: '1',
                     canton: '01',

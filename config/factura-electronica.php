@@ -16,4 +16,6 @@ return [
         'path' => env('FE_P12_PATH'),
         'pin' => env('FE_PIN'),
     ],
+    // Check each signed comprobante against the bundled v4.4 XSD before sending it.
+    'validate_schema' => (bool) env('FE_VALIDATE_SCHEMA', true),
 ];

@@ -35,6 +35,8 @@ FE_P12_PATH=/absolute/path/to/cert.p12 \
 vendor/bin/phpunit tests/Feature/SandboxEmitTest.php
 ```
 
+The tests sign as the certificate's own taxpayer: they read the cédula from its subject `serialNumber` (`CPF-…` física, `CPJ-…` jurídica), because Hacienda rejects a comprobante whose signer is not its emisor (or receptor, for an FEC or MR) with code -60. Set `FE_SANDBOX_CEDULA` (and `FE_SANDBOX_TIPO`) to override. `SandboxMrTest` first issues a real FE to that taxpayer and acknowledges it, since an MR must reference a comprobante that exists in the sandbox.
+
 These tests never run in CI and do not block merging.
 
 ## Static analysis

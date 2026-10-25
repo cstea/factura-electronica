@@ -14,6 +14,7 @@ use Stea\FacturaElectronica\Dtos\ResultadoDto;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
+use Stea\FacturaElectronica\Exceptions\SchemaValidationException;
 use Stea\FacturaElectronica\Exceptions\XmlBuildException;
 use Stea\FacturaElectronica\Hacienda\EstadoConsulta;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
@@ -30,11 +31,20 @@ final class FacturaElectronicaManager
         private readonly XadesEpesSigner $signer,
         private readonly HaciendaClient $client,
         private readonly SigningCertificate $certificate,
+        /**
+         * Check every signed document against the bundled v4.4 XSD before it
+         * is sent. Turn off only if Hacienda's published schema and its
+         * recepción disagree.
+         */
+        private readonly bool $validateSchema = true,
     ) {}
 
     /**
-     * Builds, validates (XSD) and signs a comprobante without sending it. Pass `$clave` when it was already assigned (it is respected). Throws {@see XmlBuildException} with the schema errors
-     * when the XML would not validate, so bad data never reaches Hacienda.
+     * Builds, validates (XSD) and signs a comprobante without sending it. Pass `$clave` when it was already assigned (it is respected). Throws {@see SchemaValidationException} with the schema errors
+     * when the signed XML would not validate (unless `validate_schema` is off), so bad data never reaches Hacienda.
+     *
+     * @throws SchemaValidationException
+     * @throws XmlBuildException
      */
     public function preparar(TipoDocumento $tipo, ComprobanteRequest $dto, ?string $codigoSeguridad = null, ?string $clave = null): Preparado
     {
@@ -64,13 +74,7 @@ final class FacturaElectronicaManager
         $signedXml = (string) $this->signer->sign($doc, $this->certificate)->saveXML();
 
         // Validate what Hacienda will receive: the signed text, re-read (the schema requires the Signature node).
-        $leido = new DOMDocument;
-        $leido->loadXML($signedXml);
-        $validador = new XsdValidator;
-
-        if (! $validador->validate($leido, $builder->xsdPath())) {
-            throw new XmlBuildException('The comprobante does not validate against the XSD: '.implode(' | ', array_slice($validador->errors(), 0, 5)));
-        }
+        $this->assertSchemaValid($clave, $signedXml, $builder->xsdPath());
 
         $payload = [
             'emisorTipo' => $dto->tipoIdentificacionEmisor(),
@@ -123,9 +127,11 @@ final class FacturaElectronicaManager
     {
         $clave = $dto->claveComprobante;
 
-        $doc = $this->registry->for(TipoDocumento::MensajeReceptorAceptado)->build($dto, $clave);
+        $builder = $this->registry->for(TipoDocumento::MensajeReceptorAceptado);
+        $doc = $builder->build($dto, $clave);
         $signed = $this->signer->sign($doc, $this->certificate);
         $signedXml = (string) $signed->saveXML();
+        $this->assertSchemaValid($clave, $signedXml, $builder->xsdPath());
 
         // For an MR the supplier is the emisor of the original comprobante and
         // STEA is the receptor (we are the obligado tributario submitting the
@@ -147,6 +153,26 @@ final class FacturaElectronicaManager
             signedXml: $signedXml,
             estado: EstadoComprobante::Enviado,
         );
+    }
+
+    /**
+     * Validate the bytes that will be sent (re-parsed, as Hacienda receives them).
+     *
+     * @throws SchemaValidationException
+     */
+    private function assertSchemaValid(string $clave, string $signedXml, string $xsdPath): void
+    {
+        if (! $this->validateSchema) {
+            return;
+        }
+
+        $wire = new DOMDocument;
+        $wire->loadXML($signedXml);
+
+        $validator = new XsdValidator;
+        if (! $validator->validate($wire, $xsdPath)) {
+            throw new SchemaValidationException($clave, $validator->errors());
+        }
     }
 
     private function tipoIdentificacion(string $cedula): string
