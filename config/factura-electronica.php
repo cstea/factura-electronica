@@ -8,6 +8,10 @@ return [
         'username' => env('FE_USERNAME'),
         'password' => env('FE_PASSWORD'),
     ],
+    'http' => [
+        'timeout' => (int) env('FE_HTTP_TIMEOUT', 30),
+        'connect_timeout' => (int) env('FE_HTTP_CONNECT_TIMEOUT', 10),
+    ],
     'certificate' => [
         'path' => env('FE_P12_PATH'),
         'pin' => env('FE_PIN'),
