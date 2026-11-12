@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Hacienda;
 
+use Throwable;
+
 /** What Hacienda answered to a POST /recepcion, classified by what the caller should do next. */
 final readonly class RespuestaEnvio
 {
@@ -24,6 +26,12 @@ final readonly class RespuestaEnvio
         public int $status,
         public ?string $causa = null,
         public string $cuerpo = '',
+        /**
+         * The network or login error behind a TRANSITORIO with status 0, kept
+         * so send() can rethrow it unchanged: a caller that spends a
+         * consecutivo only when Hacienda answered must still see it.
+         */
+        public ?Throwable $excepcion = null,
     ) {}
 
     public function fueRecibido(): bool

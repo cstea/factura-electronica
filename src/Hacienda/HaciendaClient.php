@@ -115,7 +115,7 @@ final class HaciendaClient
         try {
             $resp = $this->conToken(fn (PendingRequest $r): Response => $r->post($this->credentials->environment->recepcionUrl(), $body));
         } catch (ConnectionException|HaciendaAuthException $e) {
-            return new RespuestaEnvio(RespuestaEnvio::TRANSITORIO, 0, $e->getMessage());
+            return new RespuestaEnvio(RespuestaEnvio::TRANSITORIO, 0, $e->getMessage(), excepcion: $e);
         }
 
         $causa = $resp->header('X-Error-Cause');
@@ -140,12 +140,21 @@ final class HaciendaClient
     /**
      * POST /recepcion, throwing when Hacienda does not take the comprobante (kept for scripts that do not use the queue).
      *
+     * Same contract as before enviar() existed: HaciendaSendException means
+     * Hacienda answered; a timeout or a failed login propagates as the
+     * original ConnectionException or HaciendaAuthException, because Hacienda
+     * never saw the comprobante (callers roll back the consecutivo on those).
+     *
      * @param  array{emisorTipo:string,emisorNumero:string,receptorTipo?:string,receptorNumero?:string,fecha?:string,consecutivoReceptor?:string}  $payload
      * @return array{clave:string,status:int}
      */
     public function send(string $clave, string $base64SignedXml, array $payload): array
     {
         $r = $this->enviar($clave, $base64SignedXml, $payload);
+
+        if ($r->excepcion !== null) {
+            throw $r->excepcion;
+        }
 
         if (! $r->fueRecibido()) {
             throw new HaciendaSendException($r->status, $r->cuerpo !== '' ? $r->cuerpo : (string) $r->causa);

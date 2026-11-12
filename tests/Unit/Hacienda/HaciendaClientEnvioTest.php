@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Tests\Unit\Hacienda;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use PHPUnit\Framework\TestCase;
 use Stea\FacturaElectronica\Credentials\ApiCredentials;
 use Stea\FacturaElectronica\Enums\Environment;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
+use Stea\FacturaElectronica\Exceptions\HaciendaAuthException;
+use Stea\FacturaElectronica\Exceptions\HaciendaSendException;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
 use Stea\FacturaElectronica\Hacienda\MemoryTokenStore;
 use Stea\FacturaElectronica\Hacienda\RespuestaEnvio;
@@ -140,5 +143,67 @@ final class HaciendaClientEnvioTest extends TestCase
         $this->assertNull(MensajeHaciendaParser::parse(''));
         $this->assertNull(MensajeHaciendaParser::parse('no es xml'));
         $this->assertNull(MensajeHaciendaParser::parse('<Otro><Clave>1</Clave></Otro>'));
+    }
+
+    /**
+     * send() keeps v0.1.x's contract: only an answer from Hacienda is a
+     * HaciendaSendException. Callers spend a consecutivo on that exception and
+     * roll it back on anything else, so a timeout must not look like an answer.
+     */
+    public function test_send_rethrows_a_timeout_unchanged(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(function ($request) use ($http) {
+            if (str_contains($request->url(), 'openid-connect/token')) {
+                return $this->token($http);
+            }
+
+            throw new ConnectionException('cURL error 28: timed out');
+        });
+
+        $this->expectException(ConnectionException::class);
+
+        $this->cliente($http)->send(str_repeat('5', 50), 'WA==', self::PAYLOAD);
+    }
+
+    public function test_send_rethrows_a_failed_login_unchanged(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(['*openid-connect/token' => $http->response(['error' => 'invalid_grant'], 401)]);
+
+        $this->expectException(HaciendaAuthException::class);
+
+        $this->cliente($http)->send(str_repeat('5', 50), 'WA==', self::PAYLOAD);
+    }
+
+    public function test_enviar_still_reports_a_timeout_as_transient_without_throwing(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(function ($request) use ($http) {
+            if (str_contains($request->url(), 'openid-connect/token')) {
+                return $this->token($http);
+            }
+
+            throw new ConnectionException('cURL error 28: timed out');
+        });
+
+        $r = $this->cliente($http)->enviar(str_repeat('5', 50), 'WA==', self::PAYLOAD);
+
+        $this->assertTrue($r->esTransitorio());
+        $this->assertSame(0, $r->status);
+        $this->assertInstanceOf(ConnectionException::class, $r->excepcion);
+    }
+
+    public function test_send_still_throws_hacienda_send_exception_when_hacienda_answers(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(['*openid-connect/token' => $this->token($http), '*recepcion*' => $http->response('', 500)]);
+
+        try {
+            $this->cliente($http)->send(str_repeat('5', 50), 'WA==', self::PAYLOAD);
+            $this->fail('A 500 from Hacienda must throw HaciendaSendException.');
+        } catch (HaciendaSendException $e) {
+            $this->assertSame(500, $e->status);
+        }
     }
 }
