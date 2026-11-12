@@ -9,12 +9,16 @@ use Stea\FacturaElectronica\Clave\ClaveGenerator;
 use Stea\FacturaElectronica\Credentials\SigningCertificate;
 use Stea\FacturaElectronica\Dtos\Contracts\ComprobanteRequest;
 use Stea\FacturaElectronica\Dtos\MensajeReceptorDto;
+use Stea\FacturaElectronica\Dtos\Preparado;
 use Stea\FacturaElectronica\Dtos\ResultadoDto;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
 use Stea\FacturaElectronica\Exceptions\HaciendaRejectedException;
 use Stea\FacturaElectronica\Exceptions\SchemaValidationException;
+use Stea\FacturaElectronica\Exceptions\XmlBuildException;
+use Stea\FacturaElectronica\Hacienda\EstadoConsulta;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
+use Stea\FacturaElectronica\Hacienda\RespuestaEnvio;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
 use Stea\FacturaElectronica\Xml\BuilderRegistry;
 use Stea\FacturaElectronica\Xml\XsdValidator;
@@ -35,22 +39,41 @@ final class FacturaElectronicaManager
         private readonly bool $validateSchema = true,
     ) {}
 
-    public function emitir(TipoDocumento $tipo, ComprobanteRequest $dto): ResultadoDto
+    /**
+     * Builds, validates (XSD) and signs a comprobante without sending it. Pass `$clave` when it was already assigned (it is respected). Throws {@see SchemaValidationException} with the schema errors
+     * when the signed XML would not validate (unless `validate_schema` is off), so bad data never reaches Hacienda.
+     *
+     * @throws SchemaValidationException
+     * @throws XmlBuildException
+     */
+    public function preparar(TipoDocumento $tipo, ComprobanteRequest $dto, ?string $codigoSeguridad = null, ?string $clave = null): Preparado
     {
-        $codigoSeguridad = str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+        if ($clave !== null) {
+            // Quien numera el comprobante ya le asignó su clave (se imprime y se referencia antes de firmar): se respeta, pero debe ser
+            // coherente con el comprobante, o Hacienda lo rechazaría.
+            if (preg_match('/^\d{50}$/', $clave) !== 1 || substr($clave, 21, 20) !== $dto->consecutivo()) {
+                throw new XmlBuildException('The clave does not match the comprobante consecutivo.');
+            }
 
-        $clave = $this->claveGenerator->generate(
-            $dto->cedulaEmisor(),
-            $dto->fechaEmision(),
-            $dto->consecutivo(),
-            $dto->situacion(),
-            $codigoSeguridad,
-        );
+            $codigoSeguridad = substr($clave, 42, 8);
+        } else {
+            $codigoSeguridad ??= str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+
+            $clave = $this->claveGenerator->generate(
+                $dto->cedulaEmisor(),
+                $dto->fechaEmision(),
+                $dto->consecutivo(),
+                $dto->situacion(),
+                $codigoSeguridad,
+            );
+        }
 
         $builder = $this->registry->for($tipo);
         $doc = $builder->build($dto, $clave);
-        $signed = $this->signer->sign($doc, $this->certificate);
-        $signedXml = (string) $signed->saveXML();
+
+        $signedXml = (string) $this->signer->sign($doc, $this->certificate)->saveXML();
+
+        // Validate what Hacienda will receive: the signed text, re-read (the schema requires the Signature node).
         $this->assertSchemaValid($clave, $signedXml, $builder->xsdPath());
 
         $payload = [
@@ -64,12 +87,30 @@ final class FacturaElectronicaManager
             $payload['receptorNumero'] = $r->numero;
         }
 
-        $this->client->send($clave, base64_encode($signedXml), $payload);
+        return new Preparado($clave, $dto->consecutivo(), $codigoSeguridad, $signedXml, $payload);
+    }
+
+    /** Sends an already signed comprobante. Never throws on an HTTP answer; see {@see RespuestaEnvio}. */
+    public function enviar(Preparado $preparado): RespuestaEnvio
+    {
+        return $this->client->enviar($preparado->clave, base64_encode($preparado->xmlFirmado), $preparado->payload);
+    }
+
+    /** The state Hacienda reports for a clave, without throwing. */
+    public function consultarEstado(string $clave): EstadoConsulta
+    {
+        return $this->client->consultarEstado($clave);
+    }
+
+    public function emitir(TipoDocumento $tipo, ComprobanteRequest $dto): ResultadoDto
+    {
+        $preparado = $this->preparar($tipo, $dto);
+        $this->client->send($preparado->clave, base64_encode($preparado->xmlFirmado), $preparado->payload);
 
         return new ResultadoDto(
-            clave: $clave,
+            clave: $preparado->clave,
             consecutivo: $dto->consecutivo(),
-            signedXml: $signedXml,
+            signedXml: $preparado->xmlFirmado,
             estado: EstadoComprobante::Enviado,
         );
     }

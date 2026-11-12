@@ -7,10 +7,12 @@ namespace Stea\FacturaElectronica;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 use Stea\FacturaElectronica\Clave\ClaveGenerator;
+use Stea\FacturaElectronica\Consultas\ConsultaPublicaClient;
 use Stea\FacturaElectronica\Credentials\ApiCredentials;
 use Stea\FacturaElectronica\Credentials\SigningCertificate;
 use Stea\FacturaElectronica\Enums\Environment;
 use Stea\FacturaElectronica\Enums\TipoDocumento;
+use Stea\FacturaElectronica\Hacienda\CacheTokenStore;
 use Stea\FacturaElectronica\Hacienda\HaciendaClient;
 use Stea\FacturaElectronica\Signing\XadesEpesSigner;
 use Stea\FacturaElectronica\Xml\BuilderRegistry;
@@ -53,8 +55,13 @@ final class FacturaElectronicaServiceProvider extends ServiceProvider
                     (string) $config['credentials']['password'],
                     Environment::from((string) $config['environment']),
                 ),
+                new CacheTokenStore($app->make('cache.store')),
+                (int) ($config['http']['timeout'] ?? 30),
+                (int) ($config['http']['connect_timeout'] ?? 10),
             );
         });
+
+        $this->app->singleton(ConsultaPublicaClient::class, fn ($app): ConsultaPublicaClient => new ConsultaPublicaClient($app->make(HttpFactory::class)));
 
         $this->app->singleton(FacturaElectronicaManager::class, function ($app): FacturaElectronicaManager {
             $config = $app['config']['factura-electronica'];

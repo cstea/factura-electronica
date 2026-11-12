@@ -26,10 +26,17 @@ final readonly class TiqueteDto implements ComprobanteRequest
         public ?ReceptorDto $receptor,
         public array $lineas,
         public string $condicionVenta = '01',
-        public string $medioPago = '04',
+        public ?string $medioPago = null,
         public string $moneda = 'CRC',
-        public float $tipoCambio = 1.0,
+        public float|string $tipoCambio = 1.0,
         public Situacion $situacion = Situacion::Normal,
+        /** @var MedioPagoDto[] hasta 4; vacío en ventas a crédito */
+        public array $mediosPago = [],
+        public ?int $plazoCredito = null,
+        public ?string $condicionVentaOtros = null,
+        public ?ResumenDto $resumen = null,
+        /** @var InformacionReferenciaDto[] referencias adicionales (hasta 10 en total) */
+        public array $referencias = [],
     ) {}
 
     public function consecutivo(): string

@@ -21,15 +21,21 @@ final readonly class FacturaDto implements ComprobanteRequest
         public array $lineas,
         public ?string $codigoActividadReceptor = null,
         public string $condicionVenta = '01',
-        public string $medioPago = '04',
+        public ?string $medioPago = null,
         public string $moneda = 'CRC',
-        public float $tipoCambio = 1.0,
+        public float|string $tipoCambio = 1.0,
         public Situacion $situacion = Situacion::Normal,
+        /** @var MedioPagoDto[] hasta 4; vacío en ventas a crédito */
+        public array $mediosPago = [],
+        public ?int $plazoCredito = null,
+        public ?string $condicionVentaOtros = null,
+        public ?ResumenDto $resumen = null,
+        /** @var InformacionReferenciaDto[] referencias adicionales (hasta 10 en total) */
+        public array $referencias = [],
         /**
-         * Optional reference to another comprobante: a factura that replaces
-         * one voided for a material error (codigo 15) or one Hacienda rejected
-         * (codigo 16) must point at it. See nota 9 and nota 10 of the Anexos y
-         * Estructuras v4.4.
+         * Referencia principal: una factura que sustituye a otra anulada por error material
+         * (código 15) o rechazada por Hacienda (código 16) debe apuntar a ella (notas 9 y 10 de
+         * los Anexos y Estructuras v4.4). Se emite antes que `referencias`.
          */
         public ?InformacionReferenciaDto $informacionReferencia = null,
     ) {}
