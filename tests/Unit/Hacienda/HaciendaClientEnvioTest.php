@@ -137,7 +137,7 @@ final class HaciendaClientEnvioTest extends TestCase
                 '*recepcion*' => $http->response(['clave' => 'C', 'fecha' => 'x', $estado => 'RECHAZADO', $respuesta => base64_encode($xml)]),
             ]);
 
-            $e = $this->cliente($http)->consultarEstado('C');
+            $e = $this->cliente($http)->consultarEstado(self::CLAVE);
 
             $this->assertSame(EstadoComprobante::Rechazado, $e->estado);
             $this->assertTrue($e->resuelto());
@@ -150,13 +150,13 @@ final class HaciendaClientEnvioTest extends TestCase
     {
         $http = new HttpFactory;
         $http->fake(['*openid-connect/token' => $this->token($http), '*recepcion*' => $http->response('', 404)]);
-        $e = $this->cliente($http)->consultarEstado('C');
+        $e = $this->cliente($http)->consultarEstado(self::CLAVE);
         $this->assertTrue($e->noEncontrado());
         $this->assertFalse($e->transitorio);
 
         $http = new HttpFactory;
         $http->fake(['*openid-connect/token' => $this->token($http), '*recepcion*' => $http->response('', 502)]);
-        $this->assertTrue($this->cliente($http)->consultarEstado('C')->transitorio);
+        $this->assertTrue($this->cliente($http)->consultarEstado(self::CLAVE)->transitorio);
     }
 
     public function test_el_parser_ignora_lo_que_no_es_un_mensaje_de_hacienda(): void
@@ -226,5 +226,32 @@ final class HaciendaClientEnvioTest extends TestCase
         } catch (HaciendaSendException $e) {
             $this->assertSame(500, $e->status);
         }
+    }
+
+    /** Only a clave or an MR key may be appended to the authenticated recepción URL. */
+    public function test_a_query_key_that_is_not_a_clave_is_refused_before_any_request(): void
+    {
+        foreach (['../token', self::CLAVE.'?x=1', self::CLAVE.'/x', '123'] as $clave) {
+            $http = new HttpFactory;
+            $http->fake();
+
+            try {
+                $this->cliente($http)->consultarEstado($clave);
+                $this->fail("[{$clave}] must be refused");
+            } catch (\InvalidArgumentException) {
+                $http->assertNothingSent();
+            }
+        }
+    }
+
+    /** The accounting app queries a Mensaje Receptor as "{clave}-{consecutivoReceptor}": that must keep working. */
+    public function test_a_mensaje_receptor_key_is_accepted(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(['*openid-connect/token' => $this->token($http), '*recepcion*' => $http->response(['ind-estado' => 'aceptado'], 200)]);
+
+        $r = $this->cliente($http)->consultar(self::CLAVE.'-00100001050000000001');
+
+        $this->assertSame('aceptado', $r['estado']);
     }
 }

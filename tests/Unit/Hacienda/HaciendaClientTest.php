@@ -66,7 +66,7 @@ final class HaciendaClientTest extends TestCase
         ]);
         $client = new HaciendaClient($http, new ApiCredentials('u@stag', 'p', Environment::Sandbox));
 
-        $result = $client->consultar('CLAVE123');
+        $result = $client->consultar('50601122600310100000000100001010000000001100000001');
 
         $this->assertSame('aceptado', $result['estado']);
         $this->assertSame('<MensajeHacienda/>', $result['respuestaXml']);

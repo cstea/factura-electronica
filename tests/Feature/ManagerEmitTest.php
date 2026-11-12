@@ -184,7 +184,7 @@ final class ManagerEmitTest extends TestCase
 
         $manager = $this->makeManager($http);
 
-        $result = $manager->consultar('CLAVE50DIGITS12345678901234567890123456789012345678');
+        $result = $manager->consultar('50601122600310100000000100001010000000001100000001');
 
         $this->assertSame(EstadoComprobante::Aceptado, $result->estado);
         $this->assertSame('<MensajeHacienda/>', $result->respuestaXml);
@@ -206,7 +206,7 @@ final class ManagerEmitTest extends TestCase
         $this->expectException(HaciendaRejectedException::class);
 
         try {
-            $manager->consultar('CLAVE50DIGITS12345678901234567890123456789012345678');
+            $manager->consultar('50601122600310100000000100001010000000001100000001');
         } catch (HaciendaRejectedException $e) {
             $this->assertSame('<MensajeRechazo/>', $e->respuestaXml);
 

@@ -150,4 +150,14 @@ final class ConsultaPublicaClientTest extends TestCase
 
         $this->assertNull($this->cliente($http)->cabys('1111111111111'));
     }
+
+    /** A well-formed ID never reaches Hacienda malformed, so a 403 is a block or a limit: unavailable, not "doesn't exist". */
+    public function test_un_403_es_consulta_no_disponible_y_no_un_no_existe(): void
+    {
+        $http = new HttpFactory;
+        $http->fake(['*' => $http->response('<html>Forbidden</html>', 403)]);
+
+        $this->expectException(ConsultaNoDisponible::class);
+        $this->cliente($http)->contribuyente('3101000046');
+    }
 }

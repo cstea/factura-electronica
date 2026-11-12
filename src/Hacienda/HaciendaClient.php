@@ -8,6 +8,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use InvalidArgumentException;
 use Stea\FacturaElectronica\Credentials\ApiCredentials;
 use Stea\FacturaElectronica\Enums\EstadoComprobante;
 use Stea\FacturaElectronica\Exceptions\HaciendaAuthException;
@@ -148,6 +149,17 @@ final class HaciendaClient
         return new RespuestaEnvio(RespuestaEnvio::TRANSITORIO, $resp->status(), $causa ?? substr($cuerpo, 0, 300), $cuerpo);
     }
 
+    /**
+     * Only a clave (50 characters) or a Mensaje Receptor key "{clave}-{20-digit consecutivo}" may be appended to the recepción URL
+     * that carries the bearer token: anything else (a slash, a query string) could aim the request elsewhere.
+     */
+    private static function assertClaveConsultable(string $clave): void
+    {
+        if (preg_match('/^[A-Za-z0-9]{50}(-\d{20})?$/', $clave) !== 1) {
+            throw new InvalidArgumentException('Not a clave or Mensaje Receptor key: '.substr($clave, 0, 80));
+        }
+    }
+
     /** True when Hacienda's message names $clave (a 50-character clave, as Hacienda writes it in brackets or bare). */
     private function nombraClave(string $mensaje, string $clave): bool
     {
@@ -185,6 +197,8 @@ final class HaciendaClient
     /** GET /recepcion/{clave} without throwing: 404 = Hacienda does not have it yet; 5xx/timeouts are marked transient. */
     public function consultarEstado(string $clave): EstadoConsulta
     {
+        self::assertClaveConsultable($clave);
+
         try {
             $resp = $this->conToken(fn (PendingRequest $r): Response => $r->get($this->credentials->environment->recepcionUrl().$clave));
         } catch (ConnectionException|HaciendaAuthException) {
@@ -216,6 +230,8 @@ final class HaciendaClient
      */
     public function consultar(string $clave): array
     {
+        self::assertClaveConsultable($clave);
+
         $resp = $this->conToken(fn (PendingRequest $r): Response => $r->get($this->credentials->environment->recepcionUrl().$clave));
 
         return [

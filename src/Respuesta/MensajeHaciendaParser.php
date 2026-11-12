@@ -9,10 +9,18 @@ use DOMXPath;
 
 final class MensajeHaciendaParser
 {
+    /** A MensajeHacienda is a few KB; anything far larger is not one. */
+    private const MAX_BYTES = 1_048_576;
+
     /** Null if the text is not a MensajeHacienda document. */
     public static function parse(string $xml): ?MensajeHacienda
     {
-        if (trim($xml) === '') {
+        if (trim($xml) === '' || strlen($xml) > self::MAX_BYTES) {
+            return null;
+        }
+
+        // Hacienda never sends a DTD; refusing one rules out entity expansion and external entities whatever libxml's defaults are.
+        if (stripos($xml, '<!DOCTYPE') !== false || stripos($xml, '<!ENTITY') !== false) {
             return null;
         }
 

@@ -177,9 +177,14 @@ final class ConsultaPublicaClient
             throw new LimiteExcedido('Hacienda limitó las consultas (HTTP 429); hay que esperar unos minutos.');
         }
 
-        // 404: no existe. 400/403 (a veces con el cuerpo en HTML): el formato no es válido para Hacienda.
-        if (in_array($resp->status(), [400, 403, 404], true)) {
+        // 404: no existe. 400 (a veces con el cuerpo en HTML): el formato no es válido para Hacienda.
+        if (in_array($resp->status(), [400, 404], true)) {
             return null;
+        }
+
+        // 403: el formato ya se validó antes de llamar, así que es un bloqueo (IP, límite de consultas), no un «no existe».
+        if ($resp->status() === 403) {
+            throw new ConsultaNoDisponible('Hacienda rechazó la consulta (HTTP 403): posible bloqueo o límite; no significa que no exista.');
         }
 
         if (! $resp->successful()) {
