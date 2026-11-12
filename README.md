@@ -14,16 +14,15 @@ The signing layer is built cleanly on top of [`robrichards/xmlseclibs`](https://
 the rest is plain PHP + `illuminate/http`. The core (DTOs, clave, XML builders, signer) has no
 Laravel dependency and is independently testable.
 
-> **Status:** this fork (`santydesignscr/factura-electronica`) has been validated against Hacienda
-> with **FE, TE, NC and ND**; upstream had additionally accepted FEE, FEC and MensajeReceptor on the
-> sandbox (`api-stag`). This is community software, not affiliated with or endorsed by the Ministerio
-> de Hacienda. **Validate against your own Hacienda environment before relying on it in production.**
+> **Status:** FEE, FEC, FE and MensajeReceptor are accepted by Hacienda's sandbox (`api-stag`) through
+> the gated sandbox tests, and FE, TE, NC and ND have been validated against Hacienda by a production
+> user. This is community software, not affiliated with or endorsed by the Ministerio de Hacienda.
+> **Validate against your own Hacienda environment before relying on it in production.**
 > No warranty — see LICENSE.
 >
-> **About this fork:** it extends [`cstea/factura-electronica`](https://github.com/cstea/factura-electronica)
-> and keeps merging its `main` (last: `d0a544c`, Hacienda's November 2026 reference codes). It fixes
-> amounts, adds discounts / exonerations / several payment methods and splits sending in two steps.
-> See [Differences from upstream](#differences-from-upstream) and [Migrating](#migrating-from-upstream).
+> Exact decimal amounts, descuentos, exoneraciones, several medios de pago, the two-step send, the
+> public queries and the certificate check were contributed by Santiago Rodríguez
+> ([@santydesignscr](https://github.com/santydesignscr), #1).
 
 ## Features
 
@@ -38,9 +37,10 @@ Laravel dependency and is independently testable.
 - **Descuentos, exoneraciones and up to 4 medios de pago** (`DescuentoDto`, `ExoneracionDto`,
   `MedioPagoDto`), with `plazoCredito` for credit sales.
 - **Transport:** OAuth2 password grant against the IDP, submit to `recepción` and query the status,
-  for both sandbox and production. The token is shared across processes through the Laravel cache
-  (`CacheTokenStore`), with a lock so concurrent workers log in once; timeouts, one retry after a 401,
-  and "ya recibido" treated as success.
+  for both sandbox and production. The token can be shared across processes through the Laravel cache
+  (`CacheTokenStore`, one entry per environment + username), with a lock so concurrent workers log in
+  once; timeouts, one retry after a 401, and Hacienda's "ya fue recibido" for the same clave treated as
+  success.
 - **Two-step sending:** `preparar()` (build + XSD validation + signature) and `enviar()` /
   `consultarEstado()`, which classify Hacienda's answer instead of throwing — fit for queued jobs.
 - **Public queries:** `ConsultaPublicaClient` (contribuyente `fe/ae`, exoneración `fe/ex`, CABYS
@@ -52,8 +52,8 @@ Laravel dependency and is independently testable.
 
 ## Requirements
 
-- PHP **8.3+** (CI on 8.3, 8.4 and 8.5; upstream asks for 8.5)
-- Extensions `ext-bcmath` (**new**, required), `ext-openssl`, `ext-dom`, `ext-libxml`
+- PHP **8.3+** (CI on 8.3, 8.4 and 8.5)
+- Extensions `ext-bcmath` (required since 0.2), `ext-openssl`, `ext-dom`, `ext-libxml`
 - Laravel components `illuminate/support` and `illuminate/http` **11, 12 or 13**; a cache store
   shared by your workers (Redis, database, file…) if you send from queues
 - A Hacienda-issued PKCS#12 (`.p12`) certificate and its PIN
@@ -61,22 +61,9 @@ Laravel dependency and is independently testable.
 
 ## Installation
 
-This fork is not on Packagist. Add it as a VCS repository and pin it to a tag or commit:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "https://github.com/santydesignscr/factura-electronica" }
-    ],
-    "require": { "stea/factura-electronica": "dev-main#<commit>" }
-}
-```
-
 ```bash
-composer require stea/factura-electronica:dev-main
+composer require stea/factura-electronica
 ```
-
-Do not track a moving `dev-main` in production: commit `composer.lock`, or tag a release and require it.
 
 Publish the config (Laravel):
 
@@ -194,34 +181,21 @@ FacturaElectronicaManager   preparar -> enviar -> consultarEstado  (emitir = pre
 
 FE, TE, NC and ND share one builder (`Xml\Concerns\BuildsComprobanteVenta`).
 
-## Differences from upstream
+## Upgrading from 0.1.x
 
-| Area | Upstream `cstea` | This fork |
-|---|---|---|
-| Amounts | `float`, totals recalculated with float error | decimal strings with `bcmath` |
-| Discounts / exonerations | not supported | `DescuentoDto`, `ExoneracionDto` |
-| Payment | one `medioPago` (`'04'` by default) | `mediosPago` (up to 4), `plazoCredito` |
-| FE `BaseImponible` | omitted by default | always emitted |
-| Resumen | always computed | computed, or explicit `ResumenDto` |
-| Sending | `emitir()` only | `preparar()` / `enviar()` / `consultarEstado()` (+ `emitir()`) |
-| Token | in memory | shared through the cache, with lock |
-| Extras | — | `ConsultaPublicaClient`, `SigningCertificate::validar()`, `MensajeHaciendaParser` |
-| PHP / ext | 8.5, no bcmath | `^8.3`, `ext-bcmath` |
-| Validated with Hacienda | FE, FEE, FEC, MR | FE, TE, NC, ND (this fork) |
-
-## Migrating from upstream
-
-Breaking points when moving an app from `cstea/factura-electronica` to this fork:
-
-1. **`TokenStore` is now an interface** (`get`, `put`, `forget`, `exclusive`). Replace
-   `new TokenStore()` with `new MemoryTokenStore()` (or `CacheTokenStore`). The Laravel service
-   provider already wires `CacheTokenStore`.
-2. **`medioPago` no longer defaults to `'04'`.** It is `?string` and defaults to `null`; set it
-   explicitly or use `mediosPago`.
-3. **Totals change.** They are computed in `bcmath`, so figures that only matched thanks to float
-   error will differ by a céntimo. Re-check any stored expected totals.
-4. **Install `ext-bcmath`.**
-5. `HaciendaClient::send()` keeps its contract (throws); the new `enviar()` does not throw.
+1. **`ext-bcmath` is required.**
+2. **`TokenStore` is an interface** whose methods take a `$scope` (`get`, `put`, `forget`, `exclusive`);
+   `HaciendaClient` derives the scope from the environment and username. Replace `new TokenStore()`
+   with `new MemoryTokenStore()` or `CacheTokenStore`; the Laravel service provider wires
+   `CacheTokenStore`.
+3. **`medioPago` no longer defaults to `'04'`.** It is `?string` and defaults to `null`; set it or use
+   `mediosPago`. A cash sale without one now fails to build instead of silently claiming a transfer.
+4. **Totals are computed with `bcmath`**, so a figure that only matched thanks to float error can
+   differ by a céntimo. Re-check stored expected totals.
+5. FE, TE, NC and ND always emit `BaseImponible`, and `Cantidad` has 3 decimals.
+6. `HaciendaClient::send()` and `emitir()` keep their contract: `HaciendaSendException` means Hacienda
+   answered; a timeout or a failed login propagates as `ConnectionException` / `HaciendaAuthException`.
+   The new `enviar()` never throws.
 
 New constructor arguments are appended at the end of each DTO, so existing named and positional calls
 keep working.
@@ -243,14 +217,17 @@ Official Ministerio de Hacienda / Dirección General de Tributación documentati
 implements (v4.4 is mandatory since 2025; it adds `ProveedorSistemas`, clave/consecutivo coding,
 and `CodigoActividadReceptor`):
 
-- **Anexos y Estructuras v4.4** (the authoritative technical spec — document structures + field notes):
-  [portal](https://atv.hacienda.go.cr/ATV/ComprobanteElectronico/frmAnexosyEstructuras.aspx) ·
-  [PDF](https://atv.hacienda.go.cr/ATV/ComprobanteElectronico/docs/esquemas/2024/v4.4/ANEXOS%20Y%20ESTRUCTURAS_V4.4.pdf)
+- **Anexos y Estructuras v4.4** (the authoritative technical spec — document structures + field notes;
+  updated May 2026 with the November 2026 reference codes):
+  [PDF](https://www.hacienda.go.cr/docs/ANEXOS_Y_ESTRUCTURAS_V4.4.pdf) ·
+  [comunicado](https://www.hacienda.go.cr/docs/ActualizacionAnexosyEstructurasVersion4.4CEv2.pdf) ·
+  [older ATV portal](https://atv.hacienda.go.cr/ATV/ComprobanteElectronico/frmAnexosyEstructuras.aspx)
 - **Comprobantes Electrónicos — Generalidades y Versión 4.4** (overview of the changes):
   [PDF](https://www.hacienda.go.cr/docs/ComprobantesElectronicos-GeneralidadesyVersion4.4.marzo2025.pdf)
 - **Resolución DGT — Disposiciones Técnicas de Comprobantes Electrónicos** (the governing resolution):
   [PDF](https://www.hacienda.go.cr/docs/DGT-R-000-2024DisposicionesTecnicasDeComprobantesElectronicosCP.pdf)
-- **Official v4.4 XML schemas (XSD)** — bundled in `resources/xsd/v4.4/`, sourced from:
+- **Official v4.4 XML schemas (XSD)** — bundled in `resources/xsd/v4.4/`, the current set published on
+  `https://www.hacienda.go.cr/docs/` (`FacturaElectronica_V4.4.xsd`, …); namespaces under
   `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/` (e.g.
   [facturaElectronica.xsd](https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/facturaElectronica.xsd),
   `facturaElectronicaCompra.xsd`, `facturaElectronicaExportacion.xsd`, `mensajeReceptor.xsd`, …)
