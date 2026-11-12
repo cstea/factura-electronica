@@ -4,31 +4,30 @@ declare(strict_types=1);
 
 namespace Stea\FacturaElectronica\Hacienda;
 
-/** Token kept in the PHP process: enough for scripts and tests; each worker would log in on its own. */
+/** Token kept in this process only (the default): fine for scripts and a single worker. */
 final class MemoryTokenStore implements TokenStore
 {
-    private ?string $token = null;
+    /** @var array<string, array{token: string, expiresAt: int}> */
+    private array $tokens = [];
 
-    private ?int $expiresAt = null;
-
-    public function get(int $now): ?string
+    public function get(string $scope, int $now): ?string
     {
-        return $this->token !== null && $this->expiresAt !== null && $now < $this->expiresAt ? $this->token : null;
+        $entry = $this->tokens[$scope] ?? null;
+
+        return $entry !== null && $now < $entry['expiresAt'] ? $entry['token'] : null;
     }
 
-    public function put(string $token, int $expiresAt): void
+    public function put(string $scope, string $token, int $expiresAt): void
     {
-        $this->token = $token;
-        $this->expiresAt = $expiresAt;
+        $this->tokens[$scope] = ['token' => $token, 'expiresAt' => $expiresAt];
     }
 
-    public function forget(): void
+    public function forget(string $scope): void
     {
-        $this->token = null;
-        $this->expiresAt = null;
+        unset($this->tokens[$scope]);
     }
 
-    public function exclusive(callable $recheck, callable $fetch): string
+    public function exclusive(string $scope, callable $recheck, callable $fetch): string
     {
         return $recheck() ?? $fetch();
     }

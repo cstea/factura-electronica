@@ -36,14 +36,15 @@ final class HaciendaClient
      */
     public function token(): string
     {
-        $cached = $this->store->get(time());
+        $cached = $this->store->get($this->scope(), time());
 
         if ($cached !== null) {
             return $cached;
         }
 
         return $this->store->exclusive(
-            fn (): ?string => $this->store->get(time()),
+            $this->scope(),
+            fn (): ?string => $this->store->get($this->scope(), time()),
             fn (): string => $this->login(),
         );
     }
@@ -51,7 +52,15 @@ final class HaciendaClient
     /** Drops the stored token (Hacienda answered 401: it expired early or was revoked). */
     public function olvidarToken(): void
     {
-        $this->store->forget();
+        $this->store->forget($this->scope());
+    }
+
+    /**
+     * The token's scope: one per environment + username, hashed so neither appears in a cache key. The password never takes part.
+     */
+    private function scope(): string
+    {
+        return hash('sha256', $this->credentials->environment->value.'|'.$this->credentials->username);
     }
 
     private function login(): string
@@ -79,7 +88,7 @@ final class HaciendaClient
         }
 
         // Renew 30 seconds early so a token never expires between the check and the request.
-        $this->store->put($accessToken, time() + max(30, $expiresIn - 30));
+        $this->store->put($this->scope(), $accessToken, time() + max(30, $expiresIn - 30));
 
         return $accessToken;
     }
