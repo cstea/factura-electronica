@@ -19,8 +19,13 @@ final class ResumenCalculator
     /** Tarifa codes that mean "no sujeto" (nota 8.1: 01 and 11). */
     private const NO_SUJETO = ['01', '11'];
 
-    /** @param LineaDetalleDto[] $lineas */
-    public static function desdeLineas(array $lineas, string|float $otrosCargos = 0): ResumenDto
+    /**
+     * OtrosCargos (and TotalOtrosCargos) are not supported yet: the builders emit neither, so TotalComprobante is the net sale plus
+     * tax. A charge folded into the total without its OtrosCargos lines would make the resumen contradict itself.
+     *
+     * @param  LineaDetalleDto[]  $lineas
+     */
+    public static function desdeLineas(array $lineas): ResumenDto
     {
         $b = [
             'sg' => '0', 'se' => '0', 'sx' => '0', 'sn' => '0',
@@ -110,7 +115,7 @@ final class ResumenCalculator
             ], $desglose)),
             totalImpuesto: Decimal::round($totalImpuesto),
             totalImpAsumEmisorFabrica: Decimal::round($asumido),
-            totalComprobante: Decimal::round(Decimal::add(Decimal::add($neta, $totalImpuesto), $otrosCargos)),
+            totalComprobante: Decimal::round(Decimal::add($neta, $totalImpuesto)),
         );
     }
 }

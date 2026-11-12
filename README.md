@@ -177,6 +177,8 @@ new FacturaDto(
 );
 ```
 
+Not supported yet: `OtrosCargos` (and `TotalOtrosCargos`). The computed `TotalComprobante` is the net sale plus tax.
+
 ## Architecture
 
 ```
