@@ -42,18 +42,39 @@ final class HaciendaClientEnvioTest extends TestCase
         $this->assertTrue($r->fueRecibido());
     }
 
+    private const CLAVE = '50601122600310100000000100001010000000001100000001';
+
     public function test_el_400_ya_fue_recibido_se_trata_como_exito(): void
     {
         $http = new HttpFactory;
         $http->fake([
             '*openid-connect/token' => $this->token($http),
-            '*recepcion*' => $http->response('', 400, ['X-Error-Cause' => 'El comprobante con la Clave [506] ya fue recibido.']),
+            '*recepcion*' => $http->response('', 400, ['X-Error-Cause' => 'El comprobante con la Clave ['.self::CLAVE.'] ya fue recibido.']),
         ]);
 
-        $r = $this->cliente($http)->enviar('C', 'WA==', self::PAYLOAD);
+        $r = $this->cliente($http)->enviar(self::CLAVE, 'WA==', self::PAYLOAD);
 
         $this->assertSame(RespuestaEnvio::YA_RECIBIDO, $r->clase);
         $this->assertTrue($r->fueRecibido());
+    }
+
+    /** "Ya fue recibido" about another clave, or with no clave, must not pass as a successful send. */
+    public function test_ya_fue_recibido_de_otra_clave_o_sin_clave_es_un_rechazo(): void
+    {
+        $otra = '50601122600310100000000100001010000000002100000002';
+
+        foreach (['El comprobante con la Clave ['.$otra.'] ya fue recibido.', 'El comprobante ya fue recibido.'] as $causa) {
+            $http = new HttpFactory;
+            $http->fake([
+                '*openid-connect/token' => $this->token($http),
+                '*recepcion*' => $http->response('', 400, ['X-Error-Cause' => $causa]),
+            ]);
+
+            $r = $this->cliente($http)->enviar(self::CLAVE, 'WA==', self::PAYLOAD);
+
+            $this->assertSame(RespuestaEnvio::RECHAZO, $r->clase, $causa);
+            $this->assertFalse($r->fueRecibido());
+        }
     }
 
     public function test_otro_400_es_un_rechazo_con_su_causa(): void

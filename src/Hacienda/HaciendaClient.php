@@ -135,7 +135,9 @@ final class HaciendaClient
             return new RespuestaEnvio(RespuestaEnvio::RECIBIDO, $resp->status(), null, $cuerpo);
         }
 
-        if ($resp->status() === 400 && $causa !== null && preg_match('/ya fue recibido/iu', $causa) === 1) {
+        // "Ya fue recibido" is a harmless retry only when it names THIS clave: a resend of the same signed bytes. Any other
+        // clave, or none, is a rejection the caller must see, never a success.
+        if ($resp->status() === 400 && $causa !== null && preg_match('/ya fue recibido/iu', $causa) === 1 && $this->nombraClave($causa, $clave)) {
             return new RespuestaEnvio(RespuestaEnvio::YA_RECIBIDO, 400, $causa, $cuerpo);
         }
 
@@ -144,6 +146,14 @@ final class HaciendaClient
         }
 
         return new RespuestaEnvio(RespuestaEnvio::TRANSITORIO, $resp->status(), $causa ?? substr($cuerpo, 0, 300), $cuerpo);
+    }
+
+    /** True when Hacienda's message names $clave (a 50-character clave, as Hacienda writes it in brackets or bare). */
+    private function nombraClave(string $mensaje, string $clave): bool
+    {
+        preg_match_all('/(?<![A-Za-z0-9])[A-Za-z0-9]{50}(?![A-Za-z0-9])/', $mensaje, $m);
+
+        return in_array($clave, $m[0], true);
     }
 
     /**
