@@ -160,6 +160,7 @@ final class SandboxMrTest extends TestCase
                 ),
             ],
             codigoActividadReceptor: self::ACTIVIDAD,
+            medioPago: '04', // transferencia; since 0.2 a cash sale must name its medio de pago
         );
     }
 
